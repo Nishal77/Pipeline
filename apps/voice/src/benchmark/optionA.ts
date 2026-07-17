@@ -6,9 +6,11 @@ import WebSocket from "ws";
 
 const REALTIME_URL = "wss://api.openai.com/v1/realtime?model=gpt-realtime";
 
-// $/min from OpenAI's published realtime pricing at benchmark time — this drifts,
-// re-check against current pricing before trusting the number in the ADR.
-const EST_COST_PER_MIN_USD = 0.24;
+// gpt-realtime-2.1 published pricing (2026-07): $32/1M input audio tokens,
+// $64/1M output audio tokens; 1 token = 100ms caller audio, 1 token = 50ms AI
+// audio. Steady-state with prompt caching on measures $0.06-0.11/min in the
+// wild (docs/adr/001-voice-stack.md) — this drifts, re-check before trusting.
+const EST_COST_PER_MIN_USD = 0.11;
 
 export async function runOptionATrial(pcm16Base64: string): Promise<number> {
   const apiKey = process.env.OPENAI_API_KEY;

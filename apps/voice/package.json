@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "benchmark": "tsx src/benchmark/run.ts",
+    "benchmark": "node --env-file=../../.env --import tsx src/benchmark/run.ts",
+    "twilio-leg": "node --env-file=../../.env --import tsx src/benchmark/twilioLeg.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "tsx --test src/**/*.test.ts"
