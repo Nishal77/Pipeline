@@ -58,9 +58,17 @@ function bridgeToOpenAI(twilioWs: WebSocket, streamSidPromise: Promise<string>):
         session: {
           type: "realtime",
           output_modalities: ["audio"],
+          instructions:
+            "You are the AI phone assistant for a plumbing business, answering calls to book jobs, " +
+            "triage emergencies, and answer basic questions. Always respond in English only, regardless " +
+            "of what language the caller speaks. Never claim to be human. Open every call with: " +
+            "'Hi, thanks for calling — this is the AI assistant for [business name], and this call is " +
+            "recorded. How can I help you today?' Then help the caller book a job, or if they describe " +
+            "a gas smell or gas leak, immediately tell them to leave the building and call the gas " +
+            "company or 911 before anything else.",
           audio: {
             input: { format: { type: "audio/pcmu" }, turn_detection: { type: "server_vad" } },
-            output: { format: { type: "audio/pcmu" } },
+            output: { format: { type: "audio/pcmu" }, voice: "marin" },
           },
         },
       }),
@@ -69,6 +77,18 @@ function bridgeToOpenAI(twilioWs: WebSocket, streamSidPromise: Promise<string>):
 
   openaiWs.on("message", async (raw) => {
     const event = JSON.parse(raw.toString());
+    // Caller shouldn't have to speak first — greet them immediately per the
+    // product's "never drop a lead" rule and the recording-disclosure requirement.
+    if (event.type === "session.updated") {
+      openaiWs.send(JSON.stringify({ type: "response.create" }));
+    }
+    // server_vad fires this the instant it detects the caller stopped talking —
+    // the correct latency anchor. Raw Twilio media frames keep arriving throughout
+    // the call (mic stays open), so timing off those measured inter-frame gaps
+    // (0-20ms) instead of real end-of-speech -> first-AI-audio latency.
+    if (event.type === "input_audio_buffer.speech_stopped") {
+      lastCallerAudioAt = performance.now();
+    }
     if (event.type === "response.output_audio.delta") {
       if (lastCallerAudioAt) {
         console.log(`Twilio-leg latency: ${(performance.now() - lastCallerAudioAt).toFixed(0)}ms`);
@@ -83,7 +103,6 @@ function bridgeToOpenAI(twilioWs: WebSocket, streamSidPromise: Promise<string>):
   twilioWs.on("message", (raw) => {
     const msg = JSON.parse(raw.toString());
     if (msg.event === "media" && openaiWs.readyState === WebSocket.OPEN) {
-      lastCallerAudioAt = performance.now();
       openaiWs.send(JSON.stringify({ type: "input_audio_buffer.append", audio: msg.media.payload }));
     }
     if (msg.event === "stop") openaiWs.close();
