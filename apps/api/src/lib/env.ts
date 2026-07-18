@@ -6,7 +6,7 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(8080),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_DSN: z.string().url().optional().or(z.literal("").transform(() => undefined)),
 });
 
 export const env = EnvSchema.parse(process.env);
