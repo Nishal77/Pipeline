@@ -23,3 +23,14 @@ export async function verifyOtp(_prevState: unknown, formData: FormData): Promis
   if (error) return { error: error.message };
   redirect("/today");
 }
+
+// FR-6.6 magic-link fallback — for when SMS delivery is flaky/unavailable.
+export async function sendMagicLink(_prevState: unknown, formData: FormData): Promise<{ error?: string; sent?: boolean }> {
+  const email = formData.get("email") as string;
+  if (!email) return { error: "Email required" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` } });
+  if (error) return { error: error.message };
+  return { sent: true };
+}
