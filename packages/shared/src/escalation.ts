@@ -8,6 +8,7 @@
 // picked up.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TwilioCreds } from "./sms.js";
+import { logEvent } from "./analytics.js";
 
 export async function escalateToOwner(
   supabase: SupabaseClient,
@@ -44,6 +45,12 @@ export async function escalateToOwner(
     method: "transfer",
     result: transferred ? "redirected" : `redirect_failed:${transferRes.status}`,
   });
+  await logEvent(supabase, input.accountId, "escalation_step", {
+    call_id: input.callId,
+    chain_step: 1,
+    method: "transfer",
+    result: transferred ? "redirected" : "failed",
+  });
 
   const smsRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilio.accountSid}/Messages.json`, {
     method: "POST",
@@ -61,6 +68,12 @@ export async function escalateToOwner(
     chain_step: 2,
     method: "sms",
     result: smsSent ? "sent" : `sms_failed:${smsRes.status}`,
+  });
+  await logEvent(supabase, input.accountId, "escalation_step", {
+    call_id: input.callId,
+    chain_step: 2,
+    method: "sms",
+    result: smsSent ? "sent" : "failed",
   });
 
   return { transferred, sms_sent: smsSent };

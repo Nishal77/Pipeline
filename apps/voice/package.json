@@ -9,7 +9,7 @@
     "dev": "node --env-file=../../.env --import tsx src/server.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "tsx --test src/**/*.test.ts"
+    "test": "tsx --test src/**/*.test.ts qa/**/*.test.ts"
   },
   "dependencies": {
     "@deepgram/sdk": "^3.11.1",

@@ -33,7 +33,28 @@ import {
   classifyUrgency,
   escalateToOwner,
   sendSms,
+  logEvent,
 } from "@pipeline/shared";
+
+const E164_RE = /^\+[1-9]\d{1,14}$/;
+
+// PRD FR-2.6: after two consecutive turns where the AI had to ask the caller to
+// repeat themselves, stop trying a third time — take a message and end the
+// call instead of looping. Detected from the AI's own transcript text (needs
+// output_modalities to include "text"), not a real ASR-confidence signal —
+// the Realtime API doesn't expose one, so phrase-matching is the ceiling here.
+const CLARIFICATION_PHRASES = [
+  "sorry, i didn't catch",
+  "sorry, could you repeat",
+  "can you say that again",
+  "i didn't quite understand",
+  "could you repeat that",
+  "sorry, what was that",
+];
+function soundsLikeClarificationRequest(text: string): boolean {
+  const lower = text.toLowerCase();
+  return CLARIFICATION_PHRASES.some((p) => lower.includes(p));
+}
 
 const PORT = Number(process.env.PORT ?? 8788);
 const REALTIME_URL = "wss://api.openai.com/v1/realtime?model=gpt-realtime";
@@ -131,13 +152,15 @@ function bridgeToOpenAI(
   twilioWs: WebSocket,
   streamSidPromise: Promise<string>,
   session: CallSession,
-  onCallEnd: (outcome: string, summary: string, triageClass: string) => void,
+  onCallEnd: (outcome: string, summary: string, triageClass: string, transcript: string) => void,
 ) {
   const { ctx } = session;
   const openaiWs = new WebSocket(REALTIME_URL, { headers: { Authorization: `Bearer ${OPENAI_API_KEY}` } });
   let disposition = "abandoned";
   let lastSummary = "";
   let triageClass = "ROUTINE";
+  let consecutiveClarifications = 0;
+  const transcriptLines: string[] = [];
 
   const toolSchemas = VOICE_TOOLS.map((name) => ({
     type: "function" as const,
@@ -151,7 +174,9 @@ function bridgeToOpenAI(
         type: "session.update",
         session: {
           type: "realtime",
-          output_modalities: ["audio"],
+          // "text" alongside "audio" gets a text transcript of what the AI says,
+          // needed for two-strike detection and the call transcript artifact.
+          output_modalities: ["audio", "text"],
           instructions: buildInstructions(ctx.profile, session.callerPhoneE164),
           tools: toolSchemas,
           audio: {
@@ -162,6 +187,7 @@ function bridgeToOpenAI(
             input: {
               format: { type: "audio/pcmu" },
               turn_detection: { type: "semantic_vad", eagerness: "low" },
+              transcription: { model: "whisper-1" },
             },
             output: { format: { type: "audio/pcmu" }, voice: "marin" },
           },
@@ -209,12 +235,17 @@ function bridgeToOpenAI(
       case "book_job": {
         const input = BookJobInput.parse(args);
         if (!jobType) return { error: "no job types configured for this account" };
+        // The model sometimes mis-transcribes spoken digits into a malformed
+        // E.164 number (seen live: "+1917975247012" — US country code
+        // prepended to an Indian number). Twilio's caller ID is ground truth;
+        // fall back to it rather than trusting a garbled spoken number.
+        const phone = E164_RE.test(input.customer_phone_e164) ? input.customer_phone_e164 : session.callerPhoneE164;
         const result = await bookJob(supabase, {
           accountId: ctx!.account.id,
           jobTypeId: jobType.id,
           slotId: input.slot_id,
           customerName: input.customer_name,
-          customerPhoneE164: input.customer_phone_e164,
+          customerPhoneE164: phone,
           address: input.address,
           durationMin: jobType.duration_min,
         });
@@ -308,6 +339,40 @@ function bridgeToOpenAI(
       );
       openaiWs.send(JSON.stringify({ type: "response.create" }));
     }
+    if (event.type === "conversation.item.input_audio_transcription.completed") {
+      transcriptLines.push(`Caller: ${event.transcript}`);
+    }
+    if (event.type === "response.output_text.done") {
+      transcriptLines.push(`AI: ${event.text}`);
+
+      if (soundsLikeClarificationRequest(event.text)) {
+        consecutiveClarifications++;
+        if (consecutiveClarifications >= 2) {
+          consecutiveClarifications = 0;
+          openaiWs.send(
+            JSON.stringify({
+              type: "conversation.item.create",
+              item: {
+                type: "message",
+                role: "system",
+                content: [
+                  {
+                    type: "input_text",
+                    text:
+                      "You've now failed to understand the caller twice in a row. Stop trying to clarify " +
+                      "further — apologize once, let them know someone will call them back shortly, call " +
+                      "take_message with whatever contact info you have, then call end_call.",
+                  },
+                ],
+              },
+            }),
+          );
+          openaiWs.send(JSON.stringify({ type: "response.create" }));
+        }
+      } else {
+        consecutiveClarifications = 0;
+      }
+    }
     if (event.type === "error") console.error("OpenAI error:", event.error);
   });
 
@@ -318,7 +383,12 @@ function bridgeToOpenAI(
     }
     if (msg.event === "stop") {
       openaiWs.close();
-      onCallEnd(disposition, lastSummary || `Call ended, disposition: ${disposition}`, triageClass);
+      onCallEnd(
+        disposition,
+        lastSummary || `Call ended, disposition: ${disposition}`,
+        triageClass,
+        transcriptLines.join("\n"),
+      );
     }
   });
 
@@ -392,24 +462,73 @@ wss.on("connection", (twilioWs, req) => {
       return;
     }
 
+    const callSid = msg.start.callSid as string;
     const session: CallSession = {
       ctx,
       callerPhoneE164: from,
       callId: callRow.id,
-      callSid: msg.start.callSid,
+      callSid,
       whisperTwimlUrl: `https://${host}/whisper`,
     };
 
-    bridgeToOpenAI(twilioWs, streamSidPromise, session, async (outcome, summary, triageClass) => {
+    await logEvent(supabase, ctx.account.id, "call_answered", { call_id: callRow.id, from_e164: from });
+
+    // Dual-channel recording of the live call via Twilio's REST API (not a
+    // <Record> TwiML verb, which we can't use since <Connect><Stream> already
+    // owns the TwiML). Best-effort — a failed recording start shouldn't kill
+    // the call itself.
+    const twilioAuth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64");
+    fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}/Recordings.json`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${twilioAuth}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ RecordingChannels: "dual" }),
+    }).catch((err) => console.error("Failed to start call recording:", err));
+
+    bridgeToOpenAI(twilioWs, streamSidPromise, session, async (outcome, summary, triageClass, transcript) => {
+      const durationS = Math.round((Date.now() - new Date(startedAt).getTime()) / 1000);
+
+      // Twilio's own recording media URL — auth-protected with our Twilio creds,
+      // not a fully public signed URL (that would mean downloading and
+      // re-uploading to Supabase Storage; deferred, this is the pragmatic v1).
+      let audioUrl: string | null = null;
+      const recordingsRes = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}/Recordings.json`,
+        { headers: { Authorization: `Basic ${twilioAuth}` } },
+      ).catch(() => null);
+      if (recordingsRes?.ok) {
+        const { recordings } = (await recordingsRes.json()) as { recordings: { sid: string }[] };
+        if (recordings[0]) {
+          audioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Recordings/${recordings[0].sid}.mp3`;
+        }
+      }
+
+      let transcriptUrl: string | null = null;
+      if (transcript) {
+        const path = `${ctx.account.id}/${callRow.id}.txt`;
+        const { error: uploadErr } = await supabase.storage
+          .from("call-transcripts")
+          .upload(path, transcript, { contentType: "text/plain", upsert: true });
+        if (!uploadErr) {
+          const { data: signed } = await supabase.storage
+            .from("call-transcripts")
+            .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days
+          transcriptUrl = signed?.signedUrl ?? null;
+        } else {
+          console.error("Transcript upload failed:", uploadErr.message);
+        }
+      }
+
       await supabase
         .from("calls")
-        .update({
-          duration_s: Math.round((Date.now() - new Date(startedAt).getTime()) / 1000),
-          outcome,
-          summary,
-          triage_class: triageClass,
-        })
+        .update({ duration_s: durationS, outcome, summary, triage_class: triageClass, audio_url: audioUrl, transcript_url: transcriptUrl })
         .eq("id", callRow.id);
+
+      await logEvent(supabase, ctx.account.id, "call_ended", {
+        call_id: callRow.id,
+        outcome,
+        triage_class: triageClass,
+        duration_s: durationS,
+      });
       console.log(`Call logged: ${outcome} — ${summary}`);
     });
   });

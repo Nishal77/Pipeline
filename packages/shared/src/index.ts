@@ -4,3 +4,4 @@ export * from "./scheduling.js";
 export * from "./sms.js";
 export * from "./escalation.js";
 export * from "./triage.js";
+export * from "./analytics.js";
