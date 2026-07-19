@@ -20,6 +20,7 @@ export interface BusinessHoursConfig {
   sat?: DayHours | null;
   sun?: DayHours | null;
   max_jobs_per_day?: number;
+  vacation_mode?: boolean; // FR-4.7 — owner toggle, no slots offered while true
 }
 
 const HOLD_EXPIRY_MS = 90_000;
@@ -65,6 +66,7 @@ export async function checkAvailability(
     google?: GoogleCreds;
   },
 ): Promise<{ slot_id: string; starts_at: string }[]> {
+  if (opts.hours.vacation_mode) return [];
   await expireStaleHolds(supabase);
 
   const candidates: Date[] = [];
