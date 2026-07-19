@@ -7,6 +7,9 @@ const EnvSchema = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   SENTRY_DSN: z.string().url().optional().or(z.literal("").transform(() => undefined)),
+  GOOGLE_CLIENT_ID: z.string().min(1),
+  GOOGLE_CLIENT_SECRET: z.string().min(1),
+  GOOGLE_REDIRECT_URI: z.string().url(),
 });
 
 export const env = EnvSchema.parse(process.env);
