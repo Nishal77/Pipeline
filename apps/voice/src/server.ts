@@ -182,7 +182,7 @@ function bridgeToOpenAI(
   twilioWs: WebSocket,
   streamSidPromise: Promise<string>,
   session: CallSession,
-  onCallEnd: (outcome: string, summary: string, triageClass: string, transcript: string) => void,
+  onCallEnd: (outcome: string, summary: string, triageClass: string, transcript: string, anyToolCalled: boolean) => void,
 ) {
   const { ctx } = session;
   const openaiWs = new WebSocket(REALTIME_URL, { headers: { Authorization: `Bearer ${OPENAI_API_KEY}` } });
@@ -190,6 +190,7 @@ function bridgeToOpenAI(
   let lastSummary = "";
   let triageClass = "ROUTINE";
   let consecutiveClarifications = 0;
+  let anyToolCalled = false;
   const transcriptLines: string[] = [];
 
   const toolSchemas = VOICE_TOOLS.map((name) => ({
@@ -230,6 +231,7 @@ function bridgeToOpenAI(
   });
 
   async function runTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+    anyToolCalled = true; // FR-1.6 spam signal: a real caller reaches at least one tool call
     const jobType = ctx!.jobTypes[0]; // Phase 2 stub: one job type per account, per CLAUDE.md scope
     switch (name) {
       case "check_availability": {
@@ -451,6 +453,7 @@ function bridgeToOpenAI(
         lastSummary || `Call ended, disposition: ${disposition}`,
         triageClass,
         transcriptLines.join("\n"),
+        anyToolCalled,
       );
     }
   });
@@ -568,8 +571,18 @@ wss.on("connection", (twilioWs, req) => {
       body: new URLSearchParams({ RecordingChannels: "dual" }),
     }).catch((err) => console.error("Failed to start call recording:", err));
 
-    bridgeToOpenAI(twilioWs, streamSidPromise, session, async (outcome, summary, triageClass, transcript) => {
+    bridgeToOpenAI(twilioWs, streamSidPromise, session, async (outcome, summary, triageClass, transcript, anyToolCalled) => {
       const durationS = Math.round((Date.now() - new Date(startedAt).getTime()) / 1000);
+
+      // FR-1.6 spam filtering v1: a call that ended abandoned, was very
+      // short, and never reached a single tool call looks like a robocall/
+      // silent hangup rather than a real caller who got interrupted. Simple
+      // heuristic ceiling — no caller-ID reputation lookup, no ML; upgrade
+      // path is a real spam-list integration once there's call volume to
+      // tune against.
+      if (outcome === "abandoned" && durationS < 8 && !anyToolCalled) {
+        outcome = "spam";
+      }
 
       // Twilio's own recording media URL — auth-protected with our Twilio creds,
       // not a fully public signed URL (that would mean downloading and
