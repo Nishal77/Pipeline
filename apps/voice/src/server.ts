@@ -19,21 +19,42 @@ import {
   LookupCallerInput,
   RescheduleInput,
   CancelInput,
+  ClassifyUrgencyInput,
+  EscalateToOwnerInput,
+  SendSmsInput,
 } from "@pipeline/shared";
-import { checkAvailability, bookJob, holdSlot, lookupCaller, rescheduleBooking, cancelBooking } from "@pipeline/shared";
+import {
+  checkAvailability,
+  bookJob,
+  holdSlot,
+  lookupCaller,
+  rescheduleBooking,
+  cancelBooking,
+  classifyUrgency,
+  escalateToOwner,
+  sendSms,
+} from "@pipeline/shared";
 
 const PORT = Number(process.env.PORT ?? 8788);
 const REALTIME_URL = "wss://api.openai.com/v1/realtime?model=gpt-realtime";
 
-const { OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
-if (!OPENAI_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error("OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY required");
+const { OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_TEST_NUMBER } =
+  process.env;
+if (
+  !OPENAI_API_KEY ||
+  !SUPABASE_URL ||
+  !SUPABASE_SERVICE_ROLE_KEY ||
+  !TWILIO_ACCOUNT_SID ||
+  !TWILIO_AUTH_TOKEN ||
+  !TWILIO_TEST_NUMBER
+) {
+  throw new Error(
+    "OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_TEST_NUMBER required",
+  );
 }
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+const twilioCreds = { accountSid: TWILIO_ACCOUNT_SID, authToken: TWILIO_AUTH_TOKEN, fromE164: TWILIO_TEST_NUMBER };
 
-// Only the tools this pass actually wires up — the rest of agentTools
-// (escalate_to_owner, send_sms, classify_urgency) stay defined in the shared
-// contract for later phases but aren't exposed to the model yet.
 const VOICE_TOOLS = [
   "check_availability",
   "hold_slot",
@@ -42,6 +63,9 @@ const VOICE_TOOLS = [
   "cancel",
   "lookup_caller",
   "take_message",
+  "classify_urgency",
+  "escalate_to_owner",
+  "send_sms",
   "end_call",
 ] as const;
 
@@ -82,28 +106,38 @@ function buildInstructions(
     "(repeat it back to confirm you heard it correctly), then call book_job. " +
     "If a known caller wants to change or cancel an existing booking, use reschedule or cancel. " +
     "If they just want to leave a message instead, use take_message. " +
+    "As soon as you have enough signal on how serious the problem is, call classify_urgency with the " +
+    "phrases the caller used describing it. If that returns EMERGENCY, call escalate_to_owner immediately " +
+    "with a short reason — do this before finishing the booking, urgent situations get the owner involved " +
+    "right away, not after wrapping up the call. After a successful book_job, call send_sms with kind " +
+    "'confirm' to text the caller a confirmation. " +
     "Call end_call once the call is wrapped up, with the right disposition. " +
     (prices ? `Only quote these exact prices, never invent numbers: ${prices}. ` : "") +
     "If the caller describes a gas smell or gas leak, immediately and firmly tell them to leave the building " +
-    "and call the gas company or 911 before anything else — do not continue with booking until they confirm " +
-    "they are safe."
+    "and call the gas company or 911 before anything else, then call classify_urgency and escalate_to_owner " +
+    "right away — do not continue with booking until they confirm they are safe."
   );
+}
+
+interface CallSession {
+  ctx: NonNullable<Awaited<ReturnType<typeof loadAccountForNumber>>>;
+  callerPhoneE164: string;
+  callId: string;
+  callSid: string;
+  whisperTwimlUrl: string;
 }
 
 function bridgeToOpenAI(
   twilioWs: WebSocket,
   streamSidPromise: Promise<string>,
-  ctx: Awaited<ReturnType<typeof loadAccountForNumber>>,
-  callerPhoneE164: string,
-  onCallEnd: (outcome: string, summary: string) => void,
+  session: CallSession,
+  onCallEnd: (outcome: string, summary: string, triageClass: string) => void,
 ) {
-  if (!ctx) {
-    twilioWs.close();
-    return;
-  }
+  const { ctx } = session;
   const openaiWs = new WebSocket(REALTIME_URL, { headers: { Authorization: `Bearer ${OPENAI_API_KEY}` } });
   let disposition = "abandoned";
   let lastSummary = "";
+  let triageClass = "ROUTINE";
 
   const toolSchemas = VOICE_TOOLS.map((name) => ({
     type: "function" as const,
@@ -118,7 +152,7 @@ function bridgeToOpenAI(
         session: {
           type: "realtime",
           output_modalities: ["audio"],
-          instructions: buildInstructions(ctx.profile, callerPhoneE164),
+          instructions: buildInstructions(ctx.profile, session.callerPhoneE164),
           tools: toolSchemas,
           audio: {
             // semantic_vad waits for the sentence to sound complete instead of firing
@@ -196,6 +230,53 @@ function bridgeToOpenAI(
         lastSummary = `Message from ${input.customer_phone_e164}: ${input.message}`.slice(0, 280);
         return { ok: true };
       }
+      case "classify_urgency": {
+        const input = ClassifyUrgencyInput.parse(args);
+        const result = classifyUrgency(input.features);
+        triageClass = result.triage_class;
+        return result;
+      }
+      case "escalate_to_owner": {
+        const input = EscalateToOwnerInput.parse(args); // call_id in the schema is ignored — session.callId is authoritative
+        const result = await escalateToOwner(supabase, twilioCreds, {
+          accountId: ctx!.account.id,
+          callId: session.callId,
+          callSid: session.callSid,
+          ownerCellE164: ctx!.account.owner_cell,
+          reason: input.reason,
+          whisperTwimlUrl: session.whisperTwimlUrl,
+        });
+        disposition = result.transferred ? "escalated_connected" : "escalated_unreached";
+        lastSummary = `Escalated: ${input.reason}`;
+        return result;
+      }
+      case "send_sms": {
+        const input = SendSmsInput.parse(args);
+        const { data: customer } = await supabase
+          .from("customers")
+          .select("id, name")
+          .eq("account_id", ctx!.account.id)
+          .eq("phone_e164", input.to_e164)
+          .maybeSingle();
+        if (!customer) return { error: "no customer record for that number yet — book_job creates one" };
+
+        let when = "";
+        if (input.booking_id) {
+          const { data: booking } = await supabase
+            .from("bookings")
+            .select("starts_at")
+            .eq("id", input.booking_id)
+            .maybeSingle();
+          if (booking) when = new Date(booking.starts_at).toLocaleString("en-US", { timeZone: ctx!.account.tz });
+        }
+        return await sendSms(supabase, twilioCreds, {
+          accountId: ctx!.account.id,
+          customerId: customer.id,
+          toE164: input.to_e164,
+          kind: input.kind,
+          vars: { name: customer.name ?? "there", job: jobType?.name ?? "your service", when, body: input.body_override ?? "" },
+        });
+      }
       case "end_call": {
         const input = EndCallInput.parse(args);
         disposition = input.disposition;
@@ -237,7 +318,7 @@ function bridgeToOpenAI(
     }
     if (msg.event === "stop") {
       openaiWs.close();
-      onCallEnd(disposition, lastSummary || `Call ended, disposition: ${disposition}`);
+      onCallEnd(disposition, lastSummary || `Call ended, disposition: ${disposition}`, triageClass);
     }
   });
 
@@ -262,13 +343,21 @@ const server = createServer((req, res) => {
     });
     return;
   }
+  if (req.method === "POST" && req.url === "/whisper") {
+    res.writeHead(200, { "Content-Type": "text/xml" });
+    res.end(
+      `<?xml version="1.0" encoding="UTF-8"?><Response><Say>Urgent PipeLine call — connecting you now.</Say></Response>`,
+    );
+    return;
+  }
   res.writeHead(404);
   res.end();
 });
 
 const wss = new WebSocketServer({ server, path: "/media" });
-wss.on("connection", (twilioWs) => {
+wss.on("connection", (twilioWs, req) => {
   const startedAt = new Date().toISOString();
+  const host = req.headers.host;
 
   let resolveStreamSid: (sid: string) => void;
   const streamSidPromise = new Promise<string>((resolve) => (resolveStreamSid = resolve));
@@ -290,17 +379,37 @@ wss.on("connection", (twilioWs) => {
       return;
     }
 
-    bridgeToOpenAI(twilioWs, streamSidPromise, ctx, from, async (outcome, summary) => {
-      await supabase.from("calls").insert({
-        account_id: ctx.account.id,
-        direction: "inbound",
-        from_e164: from,
-        started_at: startedAt,
-        duration_s: Math.round((Date.now() - new Date(startedAt).getTime()) / 1000),
-        outcome,
-        summary,
-        triage_class: "ROUTINE",
-      });
+    // Inserted now (not at call end) so escalate_to_owner has a real call_id to
+    // attach escalations rows to mid-call; updated in place once the call ends.
+    const { data: callRow } = await supabase
+      .from("calls")
+      .insert({ account_id: ctx.account.id, direction: "inbound", from_e164: from, started_at: startedAt, outcome: "abandoned" })
+      .select("id")
+      .single();
+    if (!callRow) {
+      console.error("Failed to create call row — hanging up");
+      twilioWs.close();
+      return;
+    }
+
+    const session: CallSession = {
+      ctx,
+      callerPhoneE164: from,
+      callId: callRow.id,
+      callSid: msg.start.callSid,
+      whisperTwimlUrl: `https://${host}/whisper`,
+    };
+
+    bridgeToOpenAI(twilioWs, streamSidPromise, session, async (outcome, summary, triageClass) => {
+      await supabase
+        .from("calls")
+        .update({
+          duration_s: Math.round((Date.now() - new Date(startedAt).getTime()) / 1000),
+          outcome,
+          summary,
+          triage_class: triageClass,
+        })
+        .eq("id", callRow.id);
       console.log(`Call logged: ${outcome} — ${summary}`);
     });
   });
