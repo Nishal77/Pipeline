@@ -33,6 +33,7 @@ import {
   classifyUrgency,
   escalateToOwner,
   sendSms,
+  type BusinessHoursConfig,
   logEvent,
 } from "@pipeline/shared";
 
@@ -202,13 +203,19 @@ function bridgeToOpenAI(
       case "check_availability": {
         CheckAvailabilityInput.parse(args);
         if (!jobType) return { error: "no job types configured for this account" };
-        const slots = await checkAvailability(supabase, ctx!.account.id, jobType.id);
+        const slots = await checkAvailability(supabase, ctx!.account.id, jobType.id, {
+          hours: ctx!.profile.hours as BusinessHoursConfig,
+          timeZone: ctx!.account.tz,
+          durationMin: jobType.duration_min,
+          bufferMin: jobType.buffer_min,
+          allowSameDay: triageClass === "EMERGENCY",
+        });
         return { slots };
       }
       case "hold_slot": {
         const input = HoldSlotInput.parse(args);
         if (!jobType) return { error: "no job types configured for this account" };
-        return await holdSlot(supabase, ctx!.account.id, jobType.id, input.slot_id);
+        return await holdSlot(supabase, ctx!.account.id, jobType.id, input.slot_id, jobType.duration_min);
       }
       case "lookup_caller": {
         const input = LookupCallerInput.parse(args);
@@ -240,6 +247,7 @@ function bridgeToOpenAI(
         // prepended to an Indian number). Twilio's caller ID is ground truth;
         // fall back to it rather than trusting a garbled spoken number.
         const phone = E164_RE.test(input.customer_phone_e164) ? input.customer_phone_e164 : session.callerPhoneE164;
+        const serviceAreaZips = (ctx!.profile.service_area as { zips?: string[] })?.zips;
         const result = await bookJob(supabase, {
           accountId: ctx!.account.id,
           jobTypeId: jobType.id,
@@ -248,7 +256,12 @@ function bridgeToOpenAI(
           customerPhoneE164: phone,
           address: input.address,
           durationMin: jobType.duration_min,
+          serviceAreaZips,
         });
+        if ("out_of_area" in result && result.out_of_area) {
+          disposition = "callback";
+          lastSummary = `Out-of-area lead: ${input.address.zip}`;
+        }
         if ("booking_id" in result) {
           disposition = "booked";
           lastSummary = `Booked ${jobType.name} for ${input.customer_name} at ${input.slot_id}`;

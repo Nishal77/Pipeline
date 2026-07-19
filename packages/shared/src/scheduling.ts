@@ -1,48 +1,128 @@
-// Stub calendar for Phase 2 (PRD FR-4 real slotting engine is Phase 3 scope).
-// Fixed daily slot times, filtered against existing bookings. No working-hours
-// config, no travel buffer, no per-day job limits yet — those are Phase 3.
+// Real slotting engine (PRD FR-4.2, FR-4.3, FR-4.5, FR-4.8) — Phase 2's fixed
+// 9/1/3 stub is gone. Business hours per weekday, job duration + travel
+// buffer, max jobs/day, service-area enforcement, same-day exemption for
+// EMERGENCY, and a real atomic hold with 90s expiry.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logEvent } from "./analytics.js";
+import { zonedTimeToUtc, dateKeyInZone, dayKeyInZone } from "./tz.js";
 
-const STUB_SLOT_HOURS_LOCAL = [9, 13, 15]; // 9am, 1pm, 3pm
+export interface DayHours {
+  open: string; // "HH:MM"
+  close: string; // "HH:MM"
+}
+export interface BusinessHoursConfig {
+  mon?: DayHours | null;
+  tue?: DayHours | null;
+  wed?: DayHours | null;
+  thu?: DayHours | null;
+  fri?: DayHours | null;
+  sat?: DayHours | null;
+  sun?: DayHours | null;
+  max_jobs_per_day?: number;
+}
 
-function nextWeekdaySlots(count: number): Date[] {
+const HOLD_EXPIRY_MS = 90_000;
+
+// Lazy TTL: no cron/worker needed — expire stale holds inline on the two paths
+// that care whether a slot is really free (check + confirm). ponytail: this
+// scans all held rows account-wide on every call; fine at this volume, add a
+// per-account index or a real sweeper if hold volume ever gets large.
+async function expireStaleHolds(supabase: SupabaseClient): Promise<void> {
+  await supabase
+    .from("bookings")
+    .update({ status: "canceled" })
+    .eq("status", "held")
+    .lt("held_at", new Date(Date.now() - HOLD_EXPIRY_MS).toISOString());
+}
+
+function slotsForDay(dateKey: string, hours: DayHours, durationMin: number, bufferMin: number, timeZone: string): Date[] {
+  const [openH, openM] = hours.open.split(":").map(Number);
+  const [closeH, closeM] = hours.close.split(":").map(Number);
+  const openMinutes = openH * 60 + openM;
+  const closeMinutes = closeH * 60 + closeM;
+  const step = durationMin + bufferMin;
+
   const slots: Date[] = [];
-  const cursor = new Date();
-  cursor.setUTCHours(0, 0, 0, 0);
-  cursor.setUTCDate(cursor.getUTCDate() + 1); // start tomorrow, never same-day for the stub
-
-  while (slots.length < count) {
-    const day = cursor.getUTCDay();
-    if (day !== 0 && day !== 6) {
-      for (const hour of STUB_SLOT_HOURS_LOCAL) {
-        const slot = new Date(cursor);
-        slot.setUTCHours(hour, 0, 0, 0);
-        slots.push(slot);
-      }
-    }
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  for (let m = openMinutes; m + durationMin <= closeMinutes; m += step) {
+    const hh = String(Math.floor(m / 60)).padStart(2, "0");
+    const mm = String(m % 60).padStart(2, "0");
+    slots.push(zonedTimeToUtc(dateKey, `${hh}:${mm}`, timeZone));
   }
-  return slots.slice(0, count);
+  return slots;
 }
 
 export async function checkAvailability(
   supabase: SupabaseClient,
   accountId: string,
   jobTypeId: string,
+  opts: { hours: BusinessHoursConfig; timeZone: string; durationMin: number; bufferMin: number; allowSameDay: boolean },
 ): Promise<{ slot_id: string; starts_at: string }[]> {
-  const candidates = nextWeekdaySlots(9); // 3 weekdays x 3 slots
+  await expireStaleHolds(supabase);
+
+  const candidates: Date[] = [];
+  const startOffsetDays = opts.allowSameDay ? 0 : 1;
+  for (let d = startOffsetDays; d < 21 && candidates.length < 60; d++) {
+    const probe = new Date(Date.now() + d * 86_400_000);
+    const dateKey = dateKeyInZone(probe, opts.timeZone);
+    const dayHours = opts.hours[dayKeyInZone(probe, opts.timeZone)];
+    if (!dayHours) continue;
+    candidates.push(...slotsForDay(dateKey, dayHours, opts.durationMin, opts.bufferMin, opts.timeZone));
+  }
+
   const { data: taken } = await supabase
     .from("bookings")
     .select("starts_at")
     .eq("account_id", accountId)
     .eq("job_type_id", jobTypeId)
     .in("status", ["held", "confirmed"]);
-
   const takenTimes = new Set((taken ?? []).map((b) => new Date(b.starts_at).toISOString()));
-  return candidates
-    .filter((slot) => !takenTimes.has(slot.toISOString()))
-    .slice(0, 3)
-    .map((slot) => ({ slot_id: slot.toISOString(), starts_at: slot.toISOString() }));
+
+  const maxPerDay = opts.hours.max_jobs_per_day;
+  const countPerDay = new Map<string, number>();
+  if (maxPerDay) {
+    for (const b of taken ?? []) {
+      const key = dateKeyInZone(new Date(b.starts_at), opts.timeZone);
+      countPerDay.set(key, (countPerDay.get(key) ?? 0) + 1);
+    }
+  }
+
+  const results: { slot_id: string; starts_at: string }[] = [];
+  for (const slot of candidates) {
+    if (slot.getTime() <= Date.now()) continue;
+    if (takenTimes.has(slot.toISOString())) continue;
+    if (maxPerDay) {
+      const key = dateKeyInZone(slot, opts.timeZone);
+      if ((countPerDay.get(key) ?? 0) >= maxPerDay) continue;
+    }
+    results.push({ slot_id: slot.toISOString(), starts_at: slot.toISOString() });
+    if (results.length >= 3) break;
+  }
+  return results;
+}
+
+export async function holdSlot(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobTypeId: string,
+  slotId: string,
+  durationMin: number,
+): Promise<{ held: true } | { held: false; reason: string }> {
+  await expireStaleHolds(supabase);
+  const startsAt = new Date(slotId);
+  const endsAt = new Date(startsAt.getTime() + durationMin * 60_000);
+
+  // Unique partial index (account_id, job_type_id, starts_at) where status in
+  // (held, confirmed) is what actually makes this atomic — a concurrent hold
+  // on the same slot fails at the DB level, not in application code.
+  const { error } = await supabase.from("bookings").insert({
+    account_id: accountId,
+    job_type_id: jobTypeId,
+    starts_at: startsAt.toISOString(),
+    ends_at: endsAt.toISOString(),
+    status: "held",
+    source: "ai_call",
+  });
+  return error ? { held: false, reason: "slot was just taken, offer a different one" } : { held: true };
 }
 
 export async function bookJob(
@@ -55,8 +135,16 @@ export async function bookJob(
     customerPhoneE164: string;
     address: { line1: string; line2?: string; city: string; state: string; zip: string; access_notes?: string };
     durationMin: number;
+    serviceAreaZips?: string[];
   },
-): Promise<{ booking_id: string } | { error: string }> {
+): Promise<{ booking_id: string } | { error: string; out_of_area?: boolean }> {
+  await expireStaleHolds(supabase);
+
+  if (input.serviceAreaZips && input.serviceAreaZips.length > 0 && !input.serviceAreaZips.includes(input.address.zip)) {
+    await logEvent(supabase, input.accountId, "out_of_area_lead", { zip: input.address.zip, job_type_id: input.jobTypeId });
+    return { error: `${input.address.zip} is outside the service area`, out_of_area: true };
+  }
+
   const { data: customer, error: customerErr } = await supabase
     .from("customers")
     .upsert(
@@ -75,11 +163,30 @@ export async function bookJob(
   if (addressErr || !address) return { error: `address insert failed: ${addressErr?.message}` };
 
   const startsAt = new Date(input.slotId);
-  const endsAt = new Date(startsAt.getTime() + input.durationMin * 60_000);
 
-  // Unique partial index (account_id, job_type_id, starts_at) where status in (held, confirmed)
-  // is the actual atomicity guarantee here — concurrent double-book attempts on the
-  // same slot fail at the DB level, not in application code.
+  // Confirm an existing hold on this exact slot if one exists (the normal
+  // check_availability -> hold_slot -> book_job flow); otherwise insert fresh
+  // (still atomic via the same unique index, for flows that skip the hold step).
+  const { data: existingHold } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("account_id", input.accountId)
+    .eq("job_type_id", input.jobTypeId)
+    .eq("starts_at", startsAt.toISOString())
+    .eq("status", "held")
+    .maybeSingle();
+
+  if (existingHold) {
+    const { error } = await supabase
+      .from("bookings")
+      .update({ customer_id: customer.id, address_id: address.id, status: "confirmed" })
+      .eq("id", existingHold.id)
+      .eq("status", "held"); // guard against a race with expireStaleHolds
+    if (error) return { error: `slot no longer available: ${error.message}` };
+    return { booking_id: existingHold.id };
+  }
+
+  const endsAt = new Date(startsAt.getTime() + input.durationMin * 60_000);
   const { data: booking, error: bookingErr } = await supabase
     .from("bookings")
     .insert({
@@ -97,27 +204,6 @@ export async function bookJob(
   if (bookingErr || !booking) return { error: `slot no longer available: ${bookingErr?.message}` };
 
   return { booking_id: booking.id };
-}
-
-// Phase 2 stub: no separate hold row / 90s expiry (that's Phase 3's atomic
-// hold/confirm, PRD NFR-3). book_job's unique index is the real atomicity
-// guarantee; this just re-checks the slot right before the caller commits to
-// it, so the AI doesn't confirm a slot that was taken seconds ago.
-export async function holdSlot(
-  supabase: SupabaseClient,
-  accountId: string,
-  jobTypeId: string,
-  slotId: string,
-): Promise<{ held: true } | { held: false; reason: string }> {
-  const { data: taken } = await supabase
-    .from("bookings")
-    .select("id")
-    .eq("account_id", accountId)
-    .eq("job_type_id", jobTypeId)
-    .eq("starts_at", new Date(slotId).toISOString())
-    .in("status", ["held", "confirmed"])
-    .maybeSingle();
-  return taken ? { held: false, reason: "slot was just taken, offer a different one" } : { held: true };
 }
 
 export async function lookupCaller(
@@ -142,7 +228,7 @@ export async function lookupCaller(
     .maybeSingle();
 
   let lastAddress: Record<string, unknown> | null = null;
-  if (lastBooking) {
+  if (lastBooking?.address_id) {
     const { data: address } = await supabase
       .from("addresses")
       .select("line1, line2, city, state, zip")
@@ -171,7 +257,6 @@ export async function rescheduleBooking(
   const startsAt = new Date(newSlotId);
   const endsAt = new Date(startsAt.getTime() + durationMin * 60_000);
 
-  // Same unique partial index protects against double-booking the new slot.
   const { error: updateErr } = await supabase
     .from("bookings")
     .update({ starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), status: "rescheduled" })
@@ -186,11 +271,7 @@ export async function cancelBooking(
   accountId: string,
   bookingId: string,
 ): Promise<{ ok: true } | { error: string }> {
-  const { error } = await supabase
-    .from("bookings")
-    .update({ status: "canceled" })
-    .eq("id", bookingId)
-    .eq("account_id", accountId);
+  const { error } = await supabase.from("bookings").update({ status: "canceled" }).eq("id", bookingId).eq("account_id", accountId);
   if (error) return { error: error.message };
   return { ok: true };
 }

@@ -114,8 +114,10 @@ export const BookingSource = z.enum(["ai_call", "owner_manual", "sms_reschedule"
 export const Booking = z.object({
   id: z.string().uuid(),
   account_id: z.string().uuid(),
-  customer_id: z.string().uuid(),
-  address_id: z.string().uuid(),
+  // Nullable: a held slot (FR-4.5, 90s expiry) exists before the caller's
+  // name/address are collected — filled in when the hold is confirmed.
+  customer_id: z.string().uuid().nullable(),
+  address_id: z.string().uuid().nullable(),
   job_type_id: z.string().uuid(),
   starts_at: z.string().datetime(),
   ends_at: z.string().datetime(),
