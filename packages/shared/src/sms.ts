@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { z } from "zod";
 import type { SmsKind as SmsKindSchema } from "./db.js";
+import { checkAvailability, rescheduleBooking, type BusinessHoursConfig } from "./scheduling.js";
 
 type SmsKind = z.infer<typeof SmsKindSchema>;
 
@@ -34,6 +35,48 @@ function renderTemplate(kind: SmsKind, vars: Record<string, string>): string {
 }
 
 const STOP_KEYWORDS = new Set(["stop", "stopall", "unsubscribe", "cancel", "end", "quit"]);
+
+// FR-5.4 "R (AI callback or link)" — lazy correct reading: auto-rebook to the
+// next available slot for the same job type rather than parsing a caller-typed
+// new time out of free-text SMS (real NLU-over-SMS is a bigger, separate
+// feature). Picks the first check_availability result.
+async function rescheduleViaReply(supabase: SupabaseClient, accountId: string, customerId: string): Promise<string> {
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select("id, job_type_id, job_types(name, duration_min, buffer_min), accounts(tz)")
+    .eq("customer_id", customerId)
+    .in("status", ["confirmed", "rescheduled"])
+    .gt("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!booking) return "We couldn't find an upcoming appointment to reschedule. Please call us.";
+
+  const { data: profile } = await supabase.from("business_profile").select("hours").eq("account_id", accountId).maybeSingle();
+  const row = booking as unknown as {
+    id: string;
+    job_type_id: string;
+    job_types: { name: string; duration_min: number; buffer_min: number };
+    accounts: { tz: string };
+  };
+  if (!profile) return "We couldn't find an upcoming appointment to reschedule. Please call us.";
+
+  const slots = await checkAvailability(supabase, accountId, row.job_type_id, {
+    hours: profile.hours as BusinessHoursConfig,
+    timeZone: row.accounts.tz,
+    durationMin: row.job_types.duration_min,
+    bufferMin: row.job_types.buffer_min,
+    allowSameDay: false,
+  });
+  const nextSlot = slots[0];
+  if (!nextSlot) return "No open slots found right now — please call us to reschedule.";
+
+  const result = await rescheduleBooking(supabase, accountId, row.id, nextSlot.slot_id);
+  if ("error" in result) return "Couldn't reschedule automatically — please call us.";
+
+  const when = new Date(nextSlot.starts_at).toLocaleString("en-US", { timeZone: row.accounts.tz });
+  return `Rescheduled your ${row.job_types.name} to ${when}. Reply STOP to opt out.`;
+}
 
 // FR-5.4 — inbound C/R/STOP handling. STOP is honored globally and immediately
 // (CLAUDE.md non-negotiable rule #6), checked before anything else regardless
@@ -78,7 +121,7 @@ export async function handleInboundSms(
   });
 
   if (normalized === "c") return "Thanks, see you then!";
-  if (normalized === "r") return `Please call us to reschedule.`;
+  if (normalized === "r") return await rescheduleViaReply(supabase, input.accountId, customer.id);
 
   // Freeform -> owner (FR-5.4), not auto-replied to the caller.
   const { data: account } = await supabase.from("accounts").select("owner_cell, business_name").eq("id", input.accountId).single();
