@@ -186,3 +186,39 @@ export async function sweepFairUseAlerts(supabase: SupabaseClient, twilio: Twili
     await logEvent(supabase, account.id, "fair_use_alert", { account_id: account.id, month: monthKey, minutes_used: Math.round(totalMinutes), cap });
   }
 }
+
+// FR-8 day-11 trial recap — "we answered 23 calls, booked 9 jobs ≈ $2,100"
+// (PRD's exact framing). Trials are 14 days; day 11 gives 3 days to react
+// before the trial converts. Dedup via events_analytics, same pattern as
+// the rest of this file.
+export async function sweepTrialRecaps(supabase: SupabaseClient, twilio: TwilioCreds): Promise<void> {
+  const now = new Date();
+  const { data: accounts } = await supabase.from("accounts").select("id, owner_cell, trial_ends_at").eq("status", "trial");
+
+  for (const account of accounts ?? []) {
+    if (!account.trial_ends_at) continue;
+    const daysUntilEnd = (new Date(account.trial_ends_at).getTime() - now.getTime()) / 86_400_000;
+    if (daysUntilEnd > 3.5 || daysUntilEnd < 2.5) continue; // ~day 11 of a 14-day trial
+
+    if (await alreadyLogged(supabase, "trial_recap_sent", { account_id: account.id })) continue;
+
+    const { data: calls } = await supabase.from("calls").select("id, outcome").eq("account_id", account.id);
+    const totalCalls = calls?.length ?? 0;
+    const booked = (calls ?? []).filter((c) => c.outcome === "booked").length;
+
+    const { data: bookings } = await supabase.from("bookings").select("est_value_cents").eq("account_id", account.id).eq("status", "confirmed");
+    const estValue = (bookings ?? []).reduce((sum, b) => sum + (b.est_value_cents ?? 0), 0) / 100;
+
+    const auth = Buffer.from(`${twilio.accountSid}:${twilio.authToken}`).toString("base64");
+    await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilio.accountSid}/Messages.json`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        To: account.owner_cell,
+        From: twilio.fromE164,
+        Body: `PipeLine trial update: we've answered ${totalCalls} call${totalCalls === 1 ? "" : "s"}, booked ${booked} job${booked === 1 ? "" : "s"}${estValue > 0 ? ` ≈ $${Math.round(estValue).toLocaleString()}` : ""}. Your trial ends in 3 days.`,
+      }),
+    });
+    await logEvent(supabase, account.id, "trial_recap_sent", { account_id: account.id, total_calls: totalCalls, booked });
+  }
+}
