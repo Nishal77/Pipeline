@@ -82,7 +82,7 @@ export async function checkAvailability(
     .select("starts_at")
     .eq("account_id", accountId)
     .eq("job_type_id", jobTypeId)
-    .in("status", ["held", "confirmed"]);
+    .in("status", ["held", "confirmed", "rescheduled"]); // rescheduled still occupies its current slot
   const takenTimes = new Set((taken ?? []).map((b) => new Date(b.starts_at).toISOString()));
 
   const maxPerDay = opts.hours.max_jobs_per_day;

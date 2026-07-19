@@ -497,7 +497,7 @@ const server = createServer((req, res) => {
         res.end(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
         return;
       }
-      const reply = await handleInboundSms(supabase, twilioCreds, { accountId: ctx.account.id, fromE164: from, body: text });
+      const reply = await handleInboundSms(supabase, twilioCreds, { accountId: ctx.account.id, fromE164: from, body: text }, googleCreds);
       res.end(
         `<?xml version="1.0" encoding="UTF-8"?><Response>${reply ? `<Message>${reply}</Message>` : ""}</Response>`,
       );

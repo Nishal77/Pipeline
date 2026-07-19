@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { z } from "zod";
 import type { SmsKind as SmsKindSchema } from "./db.js";
 import { checkAvailability, rescheduleBooking, type BusinessHoursConfig } from "./scheduling.js";
+import type { GoogleCreds } from "./gcal.js";
 
 type SmsKind = z.infer<typeof SmsKindSchema>;
 
@@ -40,7 +41,7 @@ const STOP_KEYWORDS = new Set(["stop", "stopall", "unsubscribe", "cancel", "end"
 // next available slot for the same job type rather than parsing a caller-typed
 // new time out of free-text SMS (real NLU-over-SMS is a bigger, separate
 // feature). Picks the first check_availability result.
-async function rescheduleViaReply(supabase: SupabaseClient, accountId: string, customerId: string): Promise<string> {
+async function rescheduleViaReply(supabase: SupabaseClient, accountId: string, customerId: string, google?: GoogleCreds): Promise<string> {
   const { data: booking } = await supabase
     .from("bookings")
     .select("id, job_type_id, job_types(name, duration_min, buffer_min), accounts(tz)")
@@ -71,7 +72,7 @@ async function rescheduleViaReply(supabase: SupabaseClient, accountId: string, c
   const nextSlot = slots[0];
   if (!nextSlot) return "No open slots found right now — please call us to reschedule.";
 
-  const result = await rescheduleBooking(supabase, accountId, row.id, nextSlot.slot_id);
+  const result = await rescheduleBooking(supabase, accountId, row.id, nextSlot.slot_id, google);
   if ("error" in result) return "Couldn't reschedule automatically — please call us.";
 
   const when = new Date(nextSlot.starts_at).toLocaleString("en-US", { timeZone: row.accounts.tz });
@@ -85,6 +86,7 @@ export async function handleInboundSms(
   supabase: SupabaseClient,
   twilio: TwilioCreds,
   input: { accountId: string; fromE164: string; body: string },
+  google?: GoogleCreds,
 ): Promise<string | null> {
   const normalized = input.body.trim().toLowerCase();
 
@@ -121,7 +123,7 @@ export async function handleInboundSms(
   });
 
   if (normalized === "c") return "Thanks, see you then!";
-  if (normalized === "r") return await rescheduleViaReply(supabase, input.accountId, customer.id);
+  if (normalized === "r") return await rescheduleViaReply(supabase, input.accountId, customer.id, google);
 
   // Freeform -> owner (FR-5.4), not auto-replied to the caller.
   const { data: account } = await supabase.from("accounts").select("owner_cell, business_name").eq("id", input.accountId).single();
