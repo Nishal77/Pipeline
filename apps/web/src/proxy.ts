@@ -35,5 +35,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // PWA assets (manifest, service worker, icons) must stay reachable
+  // unauthenticated — the browser fetches these before/without a session.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icon-.*\\.png).*)"],
 };

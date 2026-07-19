@@ -38,9 +38,22 @@ import {
   handleInboundSms,
   sweepReminders,
   sweepOwnerDigests,
+  sendPushToAccount,
 } from "@pipeline/shared";
 
-const E164_RE = /^\+[1-9]\d{1,14}$/;
+// Generic E.164 shape alone isn't enough — "+1917975247012" (14 digits after
+// +1) matches it but isn't a real NANP number (should be exactly 10 digits
+// after +1). Twilio rejects these silently at send time (error 21211), not
+// at booking time, so this slipped through the earlier fallback. Length-check
+// the two country codes actually in use (+1 US/CA, +91 India); anything else
+// falls back to generic E.164 shape.
+const E164_RE = {
+  test(phone: string): boolean {
+    if (phone.startsWith("+1")) return /^\+1\d{10}$/.test(phone);
+    if (phone.startsWith("+91")) return /^\+91\d{10}$/.test(phone);
+    return /^\+[1-9]\d{1,14}$/.test(phone);
+  },
+};
 
 // PRD FR-2.6: after two consecutive turns where the AI had to ask the caller to
 // repeat themselves, stop trying a third time — take a message and end the
@@ -85,6 +98,12 @@ const twilioCreds = { accountSid: TWILIO_ACCOUNT_SID, authToken: TWILIO_AUTH_TOK
 const googleCreds =
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
     ? { clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET }
+    : undefined;
+
+// Optional — push degrades to "no devices subscribed yet" if unset/empty.
+const vapidCreds =
+  process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY
+    ? { publicKey: process.env.VAPID_PUBLIC_KEY, privateKey: process.env.VAPID_PRIVATE_KEY, contactEmail: "owner@pipeline-test.local" }
     : undefined;
 
 const VOICE_TOOLS = [
@@ -281,6 +300,14 @@ function bridgeToOpenAI(
         if ("booking_id" in result) {
           disposition = "booked";
           lastSummary = `Booked ${jobType.name} for ${input.customer_name} at ${input.slot_id}`;
+          if (vapidCreds) {
+            const when = new Date(input.slot_id).toLocaleString("en-US", { timeZone: ctx!.account.tz });
+            sendPushToAccount(supabase, vapidCreds, ctx!.account.id, {
+              title: "New job booked",
+              body: `${jobType.name} for ${input.customer_name} at ${when}`,
+              url: "/today",
+            }).catch((err) => console.error("Push send failed:", err));
+          }
         }
         return result;
       }
@@ -308,6 +335,13 @@ function bridgeToOpenAI(
         });
         disposition = result.transferred ? "escalated_connected" : "escalated_unreached";
         lastSummary = `Escalated: ${input.reason}`;
+        if (vapidCreds) {
+          sendPushToAccount(supabase, vapidCreds, ctx!.account.id, {
+            title: "🚨 Emergency call",
+            body: input.reason,
+            url: "/today",
+          }).catch((err) => console.error("Push send failed:", err));
+        }
         return result;
       }
       case "send_sms": {
