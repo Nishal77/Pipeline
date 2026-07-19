@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "tsx --test src/**/*.test.ts qa/**/*.test.ts",
-    "qa": "node --env-file=../../.env --import tsx qa/run-corpus.ts"
+    "qa": "node --env-file=../../.env --import tsx qa/run-corpus.ts",
+    "load-test": "node --env-file=../../.env --import tsx qa/load-test.ts"
   },
   "dependencies": {
     "@deepgram/sdk": "^3.11.1",
