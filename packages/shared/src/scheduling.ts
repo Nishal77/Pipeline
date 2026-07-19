@@ -5,6 +5,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logEvent } from "./analytics.js";
 import { zonedTimeToUtc, dateKeyInZone, dayKeyInZone } from "./tz.js";
+import { busySlotsFromCalendar, pushBookingToCalendar, removeBookingFromCalendar, type GoogleCreds } from "./gcal.js";
 
 export interface DayHours {
   open: string; // "HH:MM"
@@ -55,7 +56,14 @@ export async function checkAvailability(
   supabase: SupabaseClient,
   accountId: string,
   jobTypeId: string,
-  opts: { hours: BusinessHoursConfig; timeZone: string; durationMin: number; bufferMin: number; allowSameDay: boolean },
+  opts: {
+    hours: BusinessHoursConfig;
+    timeZone: string;
+    durationMin: number;
+    bufferMin: number;
+    allowSameDay: boolean;
+    google?: GoogleCreds;
+  },
 ): Promise<{ slot_id: string; starts_at: string }[]> {
   await expireStaleHolds(supabase);
 
@@ -86,10 +94,17 @@ export async function checkAvailability(
     }
   }
 
+  // Two-way sync, pull side: don't offer a slot the owner has personally
+  // blocked off in their own Google Calendar, outside our booking system.
+  const busyOnPersonalCalendar = opts.google
+    ? await busySlotsFromCalendar(supabase, opts.google, accountId, candidates)
+    : new Set<string>();
+
   const results: { slot_id: string; starts_at: string }[] = [];
   for (const slot of candidates) {
     if (slot.getTime() <= Date.now()) continue;
     if (takenTimes.has(slot.toISOString())) continue;
+    if (busyOnPersonalCalendar.has(slot.toISOString())) continue;
     if (maxPerDay) {
       const key = dateKeyInZone(slot, opts.timeZone);
       if ((countPerDay.get(key) ?? 0) >= maxPerDay) continue;
@@ -136,6 +151,8 @@ export async function bookJob(
     address: { line1: string; line2?: string; city: string; state: string; zip: string; access_notes?: string };
     durationMin: number;
     serviceAreaZips?: string[];
+    jobTypeName?: string;
+    google?: GoogleCreds;
   },
 ): Promise<{ booking_id: string } | { error: string; out_of_area?: boolean }> {
   await expireStaleHolds(supabase);
@@ -176,6 +193,9 @@ export async function bookJob(
     .eq("status", "held")
     .maybeSingle();
 
+  const endsAt = new Date(startsAt.getTime() + input.durationMin * 60_000);
+  const summary = `${input.jobTypeName ?? "Job"} — ${input.customerName}`;
+
   if (existingHold) {
     const { error } = await supabase
       .from("bookings")
@@ -183,10 +203,19 @@ export async function bookJob(
       .eq("id", existingHold.id)
       .eq("status", "held"); // guard against a race with expireStaleHolds
     if (error) return { error: `slot no longer available: ${error.message}` };
+    if (input.google) {
+      await pushBookingToCalendar(supabase, input.google, {
+        accountId: input.accountId,
+        bookingId: existingHold.id,
+        existingEventId: null,
+        summary,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+      });
+    }
     return { booking_id: existingHold.id };
   }
 
-  const endsAt = new Date(startsAt.getTime() + input.durationMin * 60_000);
   const { data: booking, error: bookingErr } = await supabase
     .from("bookings")
     .insert({
@@ -202,6 +231,17 @@ export async function bookJob(
     .select("id")
     .single();
   if (bookingErr || !booking) return { error: `slot no longer available: ${bookingErr?.message}` };
+
+  if (input.google) {
+    await pushBookingToCalendar(supabase, input.google, {
+      accountId: input.accountId,
+      bookingId: booking.id,
+      existingEventId: null,
+      summary,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+    });
+  }
 
   return { booking_id: booking.id };
 }
@@ -244,18 +284,19 @@ export async function rescheduleBooking(
   accountId: string,
   bookingId: string,
   newSlotId: string,
+  google?: GoogleCreds,
 ): Promise<{ ok: true } | { error: string }> {
   const { data: existing, error: fetchErr } = await supabase
     .from("bookings")
-    .select("job_types(duration_min)")
+    .select("gcal_event_id, job_types(duration_min, name)")
     .eq("id", bookingId)
     .eq("account_id", accountId)
     .single();
   if (fetchErr || !existing) return { error: `booking not found: ${fetchErr?.message}` };
 
-  const durationMin = (existing as unknown as { job_types: { duration_min: number } }).job_types.duration_min;
+  const row = existing as unknown as { gcal_event_id: string | null; job_types: { duration_min: number; name: string } };
   const startsAt = new Date(newSlotId);
-  const endsAt = new Date(startsAt.getTime() + durationMin * 60_000);
+  const endsAt = new Date(startsAt.getTime() + row.job_types.duration_min * 60_000);
 
   const { error: updateErr } = await supabase
     .from("bookings")
@@ -263,6 +304,17 @@ export async function rescheduleBooking(
     .eq("id", bookingId)
     .eq("account_id", accountId);
   if (updateErr) return { error: `new slot no longer available: ${updateErr.message}` };
+
+  if (google) {
+    await pushBookingToCalendar(supabase, google, {
+      accountId,
+      bookingId,
+      existingEventId: row.gcal_event_id,
+      summary: row.job_types.name,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+    });
+  }
   return { ok: true };
 }
 
@@ -270,8 +322,14 @@ export async function cancelBooking(
   supabase: SupabaseClient,
   accountId: string,
   bookingId: string,
+  google?: GoogleCreds,
 ): Promise<{ ok: true } | { error: string }> {
+  const { data: existing } = await supabase.from("bookings").select("gcal_event_id").eq("id", bookingId).eq("account_id", accountId).maybeSingle();
   const { error } = await supabase.from("bookings").update({ status: "canceled" }).eq("id", bookingId).eq("account_id", accountId);
   if (error) return { error: error.message };
+
+  if (google && existing?.gcal_event_id) {
+    await removeBookingFromCalendar(supabase, google, accountId, existing.gcal_event_id);
+  }
   return { ok: true };
 }

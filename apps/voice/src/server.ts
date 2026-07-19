@@ -80,6 +80,13 @@ if (
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 const twilioCreds = { accountSid: TWILIO_ACCOUNT_SID, authToken: TWILIO_AUTH_TOKEN, fromE164: TWILIO_TEST_NUMBER };
 
+// Optional — Google Calendar sync degrades gracefully to "not connected" for
+// accounts (or whole deployments) that haven't set these up, per gcal.ts.
+const googleCreds =
+  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    ? { clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET }
+    : undefined;
+
 const VOICE_TOOLS = [
   "check_availability",
   "hold_slot",
@@ -178,9 +185,12 @@ function bridgeToOpenAI(
         type: "session.update",
         session: {
           type: "realtime",
-          // "text" alongside "audio" gets a text transcript of what the AI says,
-          // needed for two-strike detection and the call transcript artifact.
-          output_modalities: ["audio", "text"],
+          // GA API only supports ["audio"] or ["text"] alone, not combined
+          // (learned live: combining them rejects the whole session.update,
+          // silently killing every call — no greeting, no session at all).
+          // The AI's spoken-text transcript still comes through separately
+          // via response.audio_transcript.done regardless of this setting.
+          output_modalities: ["audio"],
           instructions: buildInstructions(ctx.profile, session.callerPhoneE164),
           tools: toolSchemas,
           audio: {
@@ -212,6 +222,7 @@ function bridgeToOpenAI(
           durationMin: jobType.duration_min,
           bufferMin: jobType.buffer_min,
           allowSameDay: triageClass === "EMERGENCY",
+          google: googleCreds,
         });
         return { slots };
       }
@@ -226,7 +237,7 @@ function bridgeToOpenAI(
       }
       case "reschedule": {
         const input = RescheduleInput.parse(args);
-        const result = await rescheduleBooking(supabase, ctx!.account.id, input.booking_id, input.new_slot_id);
+        const result = await rescheduleBooking(supabase, ctx!.account.id, input.booking_id, input.new_slot_id, googleCreds);
         if ("ok" in result) {
           disposition = "booked";
           lastSummary = `Rescheduled booking ${input.booking_id} to ${input.new_slot_id}`;
@@ -235,7 +246,7 @@ function bridgeToOpenAI(
       }
       case "cancel": {
         const input = CancelInput.parse(args);
-        const result = await cancelBooking(supabase, ctx!.account.id, input.booking_id);
+        const result = await cancelBooking(supabase, ctx!.account.id, input.booking_id, googleCreds);
         if ("ok" in result) {
           disposition = "callback";
           lastSummary = `Canceled booking ${input.booking_id}`;
@@ -260,6 +271,8 @@ function bridgeToOpenAI(
           address: input.address,
           durationMin: jobType.duration_min,
           serviceAreaZips,
+          jobTypeName: jobType.name,
+          google: googleCreds,
         });
         if ("out_of_area" in result && result.out_of_area) {
           disposition = "callback";
@@ -358,10 +371,10 @@ function bridgeToOpenAI(
     if (event.type === "conversation.item.input_audio_transcription.completed") {
       transcriptLines.push(`Caller: ${event.transcript}`);
     }
-    if (event.type === "response.output_text.done") {
-      transcriptLines.push(`AI: ${event.text}`);
+    if (event.type === "response.audio_transcript.done") {
+      transcriptLines.push(`AI: ${event.transcript}`);
 
-      if (soundsLikeClarificationRequest(event.text)) {
+      if (soundsLikeClarificationRequest(event.transcript)) {
         consecutiveClarifications++;
         if (consecutiveClarifications >= 2) {
           consecutiveClarifications = 0;
