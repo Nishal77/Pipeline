@@ -371,6 +371,7 @@ function bridgeToOpenAI(
           ownerCellE164: ctx!.account.owner_cell,
           reason: input.reason,
           whisperTwimlUrl: session.whisperTwimlUrl,
+          attemptTransfer: ctx!.account.plan === "pro",
         });
         disposition = result.transferred ? "escalated_connected" : "escalated_unreached";
         lastSummary = `Escalated: ${input.reason}`;

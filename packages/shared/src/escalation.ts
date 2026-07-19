@@ -20,37 +20,43 @@ export async function escalateToOwner(
     ownerCellE164: string;
     reason: string;
     whisperTwimlUrl: string;
+    // Pro plan extra (PRD §8 "live-transfer chain default-on") — Solo gets
+    // SMS-only escalation, Pro gets the live transfer attempt too.
+    attemptTransfer: boolean;
   },
 ): Promise<{ transferred: boolean; sms_sent: boolean }> {
   const auth = Buffer.from(`${twilio.accountSid}:${twilio.authToken}`).toString("base64");
+  let transferred = false;
 
-  const redirectTwiml =
-    `<?xml version="1.0" encoding="UTF-8"?><Response><Dial>` +
-    `<Number url="${input.whisperTwimlUrl}">${input.ownerCellE164}</Number>` +
-    `</Dial></Response>`;
+  if (input.attemptTransfer) {
+    const redirectTwiml =
+      `<?xml version="1.0" encoding="UTF-8"?><Response><Dial>` +
+      `<Number url="${input.whisperTwimlUrl}">${input.ownerCellE164}</Number>` +
+      `</Dial></Response>`;
 
-  const transferRes = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${twilio.accountSid}/Calls/${input.callSid}.json`,
-    {
-      method: "POST",
-      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ Twiml: redirectTwiml }),
-    },
-  );
-  const transferred = transferRes.ok;
+    const transferRes = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${twilio.accountSid}/Calls/${input.callSid}.json`,
+      {
+        method: "POST",
+        headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ Twiml: redirectTwiml }),
+      },
+    );
+    transferred = transferRes.ok;
 
-  await supabase.from("escalations").insert({
-    call_id: input.callId,
-    chain_step: 1,
-    method: "transfer",
-    result: transferred ? "redirected" : `redirect_failed:${transferRes.status}`,
-  });
-  await logEvent(supabase, input.accountId, "escalation_step", {
-    call_id: input.callId,
-    chain_step: 1,
-    method: "transfer",
-    result: transferred ? "redirected" : "failed",
-  });
+    await supabase.from("escalations").insert({
+      call_id: input.callId,
+      chain_step: 1,
+      method: "transfer",
+      result: transferred ? "redirected" : `redirect_failed:${transferRes.status}`,
+    });
+    await logEvent(supabase, input.accountId, "escalation_step", {
+      call_id: input.callId,
+      chain_step: 1,
+      method: "transfer",
+      result: transferred ? "redirected" : "failed",
+    });
+  }
 
   const smsRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilio.accountSid}/Messages.json`, {
     method: "POST",
