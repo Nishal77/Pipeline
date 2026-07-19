@@ -12,8 +12,11 @@ export default async function TodayPage() {
   if (accountErr || !account) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-2 px-6 text-center">
-        <p className="text-lg font-medium">No account set up yet</p>
-        <p className="text-sm text-zinc-500">Onboarding isn&apos;t built yet — check back soon.</p>
+        <p className="text-lg font-medium">Welcome to PipeLine</p>
+        <p className="text-sm text-zinc-500">Let&apos;s get your business set up.</p>
+        <a href="/onboarding" className="mt-2 rounded-lg bg-black px-4 py-3 text-sm font-medium text-white dark:bg-white dark:text-black">
+          Start setup
+        </a>
       </main>
     );
   }
