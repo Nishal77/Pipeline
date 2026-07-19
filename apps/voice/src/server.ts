@@ -200,7 +200,37 @@ function bridgeToOpenAI(
   let consecutiveClarifications = 0;
   let anyToolCalled = false;
   let sessionEstablished = false;
+  let escalatedAlready = false;
   const transcriptLines: string[] = [];
+
+  // CLAUDE.md rule #3 "gas-smell script is hard-coded and non-editable" —
+  // found live: the model speaks the safety line correctly but the Realtime
+  // API doesn't reliably chain a function call into the same turn, so
+  // classify_urgency/escalate_to_owner silently never fired and the owner
+  // never got alerted. Don't leave this safety-critical path to model
+  // judgment alone — scan the caller's own transcribed words directly and
+  // force the escalation ourselves as a deterministic backstop.
+  async function triggerEscalation(reason: string): Promise<void> {
+    if (escalatedAlready) return;
+    escalatedAlready = true;
+    triageClass = "EMERGENCY";
+    const result = await escalateToOwner(supabase, twilioCreds, {
+      accountId: ctx.account.id,
+      callId: session.callId,
+      callSid: session.callSid,
+      ownerCellE164: ctx.account.owner_cell,
+      reason,
+      whisperTwimlUrl: session.whisperTwimlUrl,
+      attemptTransfer: ctx.account.plan === "pro",
+    });
+    disposition = result.transferred ? "escalated_connected" : "escalated_unreached";
+    lastSummary = `Escalated: ${reason}`;
+    if (vapidCreds) {
+      sendPushToAccount(supabase, vapidCreds, ctx.account.id, { title: "🚨 Emergency call", body: reason, url: "/today" }).catch((err) =>
+        console.error("Push send failed:", err),
+      );
+    }
+  }
 
   // §17 circuit breaker — CLAUDE.md rule #1 "never drop a lead": if the
   // OpenAI Realtime session doesn't come up (network blip, API outage, bad
@@ -364,25 +394,8 @@ function bridgeToOpenAI(
       }
       case "escalate_to_owner": {
         const input = EscalateToOwnerInput.parse(args); // call_id in the schema is ignored — session.callId is authoritative
-        const result = await escalateToOwner(supabase, twilioCreds, {
-          accountId: ctx!.account.id,
-          callId: session.callId,
-          callSid: session.callSid,
-          ownerCellE164: ctx!.account.owner_cell,
-          reason: input.reason,
-          whisperTwimlUrl: session.whisperTwimlUrl,
-          attemptTransfer: ctx!.account.plan === "pro",
-        });
-        disposition = result.transferred ? "escalated_connected" : "escalated_unreached";
-        lastSummary = `Escalated: ${input.reason}`;
-        if (vapidCreds) {
-          sendPushToAccount(supabase, vapidCreds, ctx!.account.id, {
-            title: "🚨 Emergency call",
-            body: input.reason,
-            url: "/today",
-          }).catch((err) => console.error("Push send failed:", err));
-        }
-        return result;
+        await triggerEscalation(input.reason);
+        return { ok: true };
       }
       case "send_sms": {
         const input = SendSmsInput.parse(args);
@@ -446,6 +459,13 @@ function bridgeToOpenAI(
     }
     if (event.type === "conversation.item.input_audio_transcription.completed") {
       transcriptLines.push(`Caller: ${event.transcript}`);
+      // Emergency-only safety net — deliberately not touching URGENT_TODAY/
+      // ROUTINE here (that's noisy per-utterance and belongs to the model's
+      // own classify_urgency call with full conversational context).
+      const emergencyKeywordHit = classifyUrgency([event.transcript]).triage_class === "EMERGENCY";
+      if (emergencyKeywordHit) {
+        triggerEscalation(`Caller said: "${event.transcript}"`).catch((err) => console.error("Auto-escalation failed:", err));
+      }
     }
     if (event.type === "response.audio_transcript.done") {
       transcriptLines.push(`AI: ${event.transcript}`);
