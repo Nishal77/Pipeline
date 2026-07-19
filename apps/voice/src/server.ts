@@ -6,6 +6,11 @@
 // escalation chain, two-strike fallback, entity-extraction repeat-back, and the
 // 40-dialogue QA corpus — none of those are wired yet.
 import { createServer } from "node:http";
+// §5 security pass: no PII in logs. Keeps enough to debug routing (country
+// code + last 2 digits) without the full number in plaintext logs.
+function redactPhone(e164: string): string {
+  return e164.length > 4 ? `${e164.slice(0, -4)}****${e164.slice(-2)}` : "****";
+}
 import { WebSocketServer, WebSocket } from "ws";
 import { createClient } from "@supabase/supabase-js";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -597,7 +602,7 @@ wss.on("connection", (twilioWs, req) => {
     const from = msg.start.customParameters?.from ?? "";
     const ctx = await loadAccountForNumber(to, from);
     if (!ctx) {
-      console.error(`No account found for To=${to} From=${from} — hanging up`);
+      console.error(`No account found for To=${redactPhone(to)} From=${redactPhone(from)} — hanging up`);
       twilioWs.close();
       return;
     }
