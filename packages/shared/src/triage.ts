@@ -6,7 +6,34 @@
 import type { z } from "zod";
 import type { ClassifyUrgencyOutput } from "./agent-tools.js";
 
-const EMERGENCY_KEYWORDS = ["gas smell", "gas leak", "smell gas", "sewage", "flooding", "water everywhere", "burst pipe"];
+const EMERGENCY_KEYWORDS = [
+  "gas smell",
+  "gas leak",
+  "smell gas",
+  "smell of gas",
+  "smells like gas",
+  "gas meter",
+  "sewage",
+  "flooding",
+  "flooded",
+  "water everywhere",
+  "burst pipe",
+  "pipe burst",
+  "pipe just burst",
+  "pipes froze",
+  "pipe froze",
+  "ceiling collapsed",
+  "ceiling is sagging",
+  "shooting out of",
+  "spraying",
+  "pouring",
+  "toilet overflow",
+  "overflowing",
+  "won't stop",
+  "electrical panel",
+  "light fixture",
+  "no water at all",
+];
 const URGENT_KEYWORDS = ["leak", "no hot water", "no water", "overflow", "clogged", "backed up"];
 const ROUTINE_KEYWORDS = ["maintenance", "quote", "estimate", "inspection", "install", "no rush", "whenever"];
 
