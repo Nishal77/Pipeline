@@ -42,6 +42,23 @@ export async function retestForwarding(): Promise<{ ok: boolean; checkedAt: stri
   return { ok, checkedAt };
 }
 
+// FR-8.5 retention screen — shows what they'd be giving up before they
+// confirm cancellation. Real numbers, not a generic "are you sure?".
+export async function getRetentionStats(): Promise<{ totalCalls: number; totalBooked: number; estValue: number }> {
+  const supabase = await createClient();
+  const { data: account } = await supabase.from("accounts").select("id").single();
+  if (!account) return { totalCalls: 0, totalBooked: 0, estValue: 0 };
+
+  const { data: calls } = await supabase.from("calls").select("outcome").eq("account_id", account.id);
+  const totalCalls = calls?.length ?? 0;
+  const totalBooked = (calls ?? []).filter((c) => c.outcome === "booked").length;
+
+  const { data: bookings } = await supabase.from("bookings").select("est_value_cents").eq("account_id", account.id).eq("status", "confirmed");
+  const estValue = (bookings ?? []).reduce((sum, b) => sum + (b.est_value_cents ?? 0), 0) / 100;
+
+  return { totalCalls, totalBooked, estValue };
+}
+
 // FR-8.5 self-serve cancel — cancels at period end via apps/api's billing
 // route (real Stripe subscription cancellation), not immediately, so the
 // owner keeps access through what they already paid for.

@@ -1,10 +1,16 @@
 "use client";
 import { useState } from "react";
-import { cancelSubscription, exportAccountData } from "./actions";
+import { cancelSubscription, exportAccountData, getRetentionStats } from "./actions";
 
 export default function BillingActions() {
   const [cancelState, setCancelState] = useState<"idle" | "confirming" | "done" | "error">("idle");
   const [exporting, setExporting] = useState(false);
+  const [stats, setStats] = useState<{ totalCalls: number; totalBooked: number; estValue: number } | null>(null);
+
+  async function startCancel() {
+    setStats(await getRetentionStats());
+    setCancelState("confirming");
+  }
 
   async function handleExport() {
     setExporting(true);
@@ -32,19 +38,33 @@ export default function BillingActions() {
       </button>
 
       {cancelState === "idle" && (
-        <button onClick={() => setCancelState("confirming")} className="text-left text-red-600 underline dark:text-red-400">
+        <button onClick={startCancel} className="text-left text-red-600 underline dark:text-red-400">
           Cancel subscription
         </button>
       )}
-      {cancelState === "confirming" && (
-        <div className="flex flex-col gap-2">
-          <p className="text-zinc-500">You&apos;ll keep access until the end of your current billing period. Sure?</p>
+      {cancelState === "confirming" && stats && (
+        <div className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
+          {stats.totalCalls > 0 ? (
+            <p>
+              So far PipeLine has answered <strong>{stats.totalCalls}</strong> call{stats.totalCalls === 1 ? "" : "s"} and booked{" "}
+              <strong>{stats.totalBooked}</strong> job{stats.totalBooked === 1 ? "" : "s"}
+              {stats.estValue > 0 && (
+                <>
+                  {" "}
+                  worth about <strong>${Math.round(stats.estValue).toLocaleString()}</strong>
+                </>
+              )}
+              . Cancelling means missed calls go unanswered again.
+            </p>
+          ) : (
+            <p>You&apos;ll keep access until the end of your current billing period.</p>
+          )}
           <div className="flex gap-3">
             <button onClick={handleCancel} className="text-red-600 underline dark:text-red-400">
-              Yes, cancel
+              Cancel anyway
             </button>
             <button onClick={() => setCancelState("idle")} className="text-zinc-500 underline">
-              Never mind
+              Keep my plan
             </button>
           </div>
         </div>
