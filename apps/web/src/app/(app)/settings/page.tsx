@@ -1,10 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { updateBusinessProfile } from "./actions";
 import RetestForwardingButton from "./RetestForwardingButton";
+import BillingActions from "./BillingActions";
 
-// FR-6.4 Settings hub. Billing (Phase 5) and full carrier-forwarding
-// automation aren't here — this covers what's actually built: business
-// profile, service area, and forwarding status/re-test.
+// FR-6.4 Settings hub.
 export default async function SettingsPage() {
   const supabase = await createClient();
   const { data: account } = await supabase.from("accounts").select("id, business_name, owner_cell, email, plan, status").maybeSingle();
@@ -97,6 +96,13 @@ export default async function SettingsPage() {
           ) : (
             <p className="text-zinc-500">No number set up yet.</p>
           )}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">Billing</h2>
+        <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+          <BillingActions />
         </div>
       </section>
     </main>

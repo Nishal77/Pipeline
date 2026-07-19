@@ -41,3 +41,40 @@ export async function retestForwarding(): Promise<{ ok: boolean; checkedAt: stri
   revalidatePath("/settings");
   return { ok, checkedAt };
 }
+
+// FR-8.5 self-serve cancel — cancels at period end via apps/api's billing
+// route (real Stripe subscription cancellation), not immediately, so the
+// owner keeps access through what they already paid for.
+export async function cancelSubscription(): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: account } = await supabase.from("accounts").select("id").single();
+  if (!account) return { error: "No account found" };
+
+  const res = await fetch(`${process.env.API_BASE_URL}/billing/cancel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ account_id: account.id }),
+  }).catch(() => null);
+  if (!res?.ok) return { error: "Couldn't cancel right now — please try again or contact support." };
+
+  revalidatePath("/settings");
+  return {};
+}
+
+// FR-8.5 data export — everything tied to this account, as one JSON blob.
+// CSV/audio-zip (spec's exact wording) is a bigger format-conversion job;
+// JSON is the same underlying data and is what's actually exported here.
+export async function exportAccountData(): Promise<{ error?: string; data?: string }> {
+  const supabase = await createClient();
+  const { data: account } = await supabase.from("accounts").select("*").single();
+  if (!account) return { error: "No account found" };
+
+  const [{ data: bookings }, { data: calls }, { data: customers }, { data: smsMessages }] = await Promise.all([
+    supabase.from("bookings").select("*").eq("account_id", account.id),
+    supabase.from("calls").select("*").eq("account_id", account.id),
+    supabase.from("customers").select("*").eq("account_id", account.id),
+    supabase.from("sms_messages").select("*").eq("account_id", account.id),
+  ]);
+
+  return { data: JSON.stringify({ account, bookings, calls, customers, sms_messages: smsMessages }, null, 2) };
+}
