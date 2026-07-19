@@ -33,6 +33,70 @@ function renderTemplate(kind: SmsKind, vars: Record<string, string>): string {
   }
 }
 
+const STOP_KEYWORDS = new Set(["stop", "stopall", "unsubscribe", "cancel", "end", "quit"]);
+
+// FR-5.4 — inbound C/R/STOP handling. STOP is honored globally and immediately
+// (CLAUDE.md non-negotiable rule #6), checked before anything else regardless
+// of account state. Returns the TwiML-reply body text, or null for no reply.
+export async function handleInboundSms(
+  supabase: SupabaseClient,
+  twilio: TwilioCreds,
+  input: { accountId: string; fromE164: string; body: string },
+): Promise<string | null> {
+  const normalized = input.body.trim().toLowerCase();
+
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("id, sms_opt_out")
+    .eq("account_id", input.accountId)
+    .eq("phone_e164", input.fromE164)
+    .maybeSingle();
+
+  if (STOP_KEYWORDS.has(normalized)) {
+    if (customer) {
+      await supabase.from("customers").update({ sms_opt_out: true }).eq("id", customer.id);
+      await supabase.from("audit_log").insert({
+        account_id: input.accountId,
+        actor: "system",
+        action: "sms_opt_out",
+        detail: { phone_e164: input.fromE164 },
+      });
+    }
+    return "You've been unsubscribed and won't receive further messages. Reply START to resubscribe.";
+  }
+
+  if (!customer) return null; // unknown number sending C/R/freeform — nothing to act on
+
+  await supabase.from("sms_messages").insert({
+    account_id: input.accountId,
+    customer_id: customer.id,
+    direction: "inbound",
+    kind: "freeform",
+    body: input.body,
+    status: "delivered",
+    sent_at: new Date().toISOString(),
+  });
+
+  if (normalized === "c") return "Thanks, see you then!";
+  if (normalized === "r") return `Please call us to reschedule.`;
+
+  // Freeform -> owner (FR-5.4), not auto-replied to the caller.
+  const { data: account } = await supabase.from("accounts").select("owner_cell, business_name").eq("id", input.accountId).single();
+  if (account) {
+    const auth = Buffer.from(`${twilio.accountSid}:${twilio.authToken}`).toString("base64");
+    await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilio.accountSid}/Messages.json`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        To: account.owner_cell,
+        From: twilio.fromE164,
+        Body: `Text from ${input.fromE164}: ${input.body}`.slice(0, 300),
+      }),
+    });
+  }
+  return null;
+}
+
 export async function sendSms(
   supabase: SupabaseClient,
   twilio: TwilioCreds,

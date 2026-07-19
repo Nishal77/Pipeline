@@ -35,6 +35,9 @@ import {
   sendSms,
   type BusinessHoursConfig,
   logEvent,
+  handleInboundSms,
+  sweepReminders,
+  sweepOwnerDigests,
 } from "@pipeline/shared";
 
 const E164_RE = /^\+[1-9]\d{1,14}$/;
@@ -433,6 +436,27 @@ const server = createServer((req, res) => {
     );
     return;
   }
+  if (req.method === "POST" && req.url === "/sms") {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", async () => {
+      const params = new URLSearchParams(body);
+      const to = params.get("To") ?? "";
+      const from = params.get("From") ?? "";
+      const text = params.get("Body") ?? "";
+      const ctx = await loadAccountForNumber(to, from);
+      res.writeHead(200, { "Content-Type": "text/xml" });
+      if (!ctx) {
+        res.end(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+        return;
+      }
+      const reply = await handleInboundSms(supabase, twilioCreds, { accountId: ctx.account.id, fromE164: from, body: text });
+      res.end(
+        `<?xml version="1.0" encoding="UTF-8"?><Response>${reply ? `<Message>${reply}</Message>` : ""}</Response>`,
+      );
+    });
+    return;
+  }
   res.writeHead(404);
   res.end();
 });
@@ -548,3 +572,13 @@ wss.on("connection", (twilioWs, req) => {
 });
 
 server.listen(PORT, () => console.log(`Voice engine listening on :${PORT}`));
+
+// No cron infra yet (Fly.io not deployed) — an in-process interval is the
+// lazy correct thing for a single-process dev/early-launch deployment. Move
+// to a real scheduled job before running more than one instance of this
+// process, or reminders/digests would double-send.
+const SWEEP_INTERVAL_MS = 5 * 60_000;
+setInterval(() => {
+  sweepReminders(supabase, twilioCreds).catch((err) => console.error("Reminder sweep failed:", err));
+  sweepOwnerDigests(supabase, twilioCreds).catch((err) => console.error("Digest sweep failed:", err));
+}, SWEEP_INTERVAL_MS);
