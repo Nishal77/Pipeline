@@ -193,7 +193,36 @@ function bridgeToOpenAI(
   let triageClass = "ROUTINE";
   let consecutiveClarifications = 0;
   let anyToolCalled = false;
+  let sessionEstablished = false;
   const transcriptLines: string[] = [];
+
+  // §17 circuit breaker — CLAUDE.md rule #1 "never drop a lead": if the
+  // OpenAI Realtime session doesn't come up (network blip, API outage, bad
+  // key), redirect the live call to a static voicemail instead of leaving
+  // the caller in dead air. A degraded call that took a message beats a
+  // "working" one that never actually greeted anyone.
+  async function fallbackToVoicemail(reason: string): Promise<void> {
+    console.error(`Falling back to voicemail: ${reason}`);
+    const redirectTwiml =
+      `<?xml version="1.0" encoding="UTF-8"?><Response>` +
+      `<Say>Sorry, our AI assistant is temporarily unavailable. This call is recorded — please leave a message after the tone and we'll call you back.</Say>` +
+      `<Record maxLength="120" action="${session.whisperTwimlUrl.replace("/whisper", "/voicemail-callback")}?account_id=${ctx.account.id}&amp;call_id=${session.callId}" />` +
+      `<Say>We didn't receive a message. Goodbye.</Say></Response>`;
+    const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64");
+    await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${session.callSid}.json`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ Twiml: redirectTwiml }),
+    }).catch((err) => console.error("Voicemail redirect failed:", err));
+    disposition = "message";
+    lastSummary = `Voicemail fallback triggered: ${reason}`;
+  }
+
+  const sessionTimeout = setTimeout(() => {
+    if (!sessionEstablished) fallbackToVoicemail("session did not establish within 6s");
+  }, 6000);
+
+  openaiWs.on("error", (err) => fallbackToVoicemail(`connection error: ${err.message}`));
 
   const toolSchemas = VOICE_TOOLS.map((name) => ({
     type: "function" as const,
@@ -389,6 +418,8 @@ function bridgeToOpenAI(
     const event = JSON.parse(raw.toString());
 
     if (event.type === "session.updated") {
+      sessionEstablished = true;
+      clearTimeout(sessionTimeout);
       openaiWs.send(JSON.stringify({ type: "response.create" }));
     }
     if (event.type === "response.output_audio.delta") {
@@ -449,6 +480,7 @@ function bridgeToOpenAI(
       openaiWs.send(JSON.stringify({ type: "input_audio_buffer.append", audio: msg.media.payload }));
     }
     if (msg.event === "stop") {
+      clearTimeout(sessionTimeout);
       openaiWs.close();
       onCallEnd(
         disposition,
@@ -486,6 +518,38 @@ const server = createServer((req, res) => {
     res.end(
       `<?xml version="1.0" encoding="UTF-8"?><Response><Say>Urgent PipeLine call — connecting you now.</Say></Response>`,
     );
+    return;
+  }
+  if (req.method === "POST" && (req.url ?? "").startsWith("/voicemail-callback")) {
+    const url = new URL(req.url ?? "", "http://localhost");
+    const accountId = url.searchParams.get("account_id") ?? "";
+    const callId = url.searchParams.get("call_id") ?? "";
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", async () => {
+      const params = new URLSearchParams(body);
+      const recordingUrl = params.get("RecordingUrl");
+      if (recordingUrl && callId) {
+        await supabase.from("calls").update({ audio_url: `${recordingUrl}.mp3`, summary: "Voicemail left after AI outage" }).eq("id", callId);
+      }
+      if (accountId) {
+        const { data: account } = await supabase.from("accounts").select("owner_cell").eq("id", accountId).single();
+        if (account) {
+          const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64");
+          await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
+            method: "POST",
+            headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              To: account.owner_cell,
+              From: TWILIO_TEST_NUMBER,
+              Body: "PipeLine: the AI assistant had an outage and a caller left a voicemail instead. Check your Calls log.",
+            }),
+          }).catch((err) => console.error("Voicemail alert SMS failed:", err));
+        }
+      }
+      res.writeHead(200, { "Content-Type": "text/xml" });
+      res.end(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+    });
     return;
   }
   if (req.method === "POST" && req.url === "/sms") {
