@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import OnMyWayButton from "./OnMyWayButton";
 
 // FR-6.1 Today view: today's appointments, emergency banner, callback queue.
 // Empty/loading/error states per FR-6.5. RLS (owner_auth_id = auth.uid())
@@ -110,6 +111,7 @@ export default async function TodayPage() {
                         Navigate
                       </a>
                     )}
+                    <OnMyWayButton bookingId={b.id} />
                   </div>
                 </li>
               );
