@@ -3,12 +3,14 @@ import { env } from "./lib/env.js";
 import { initSentry } from "./lib/sentry.js";
 import { healthRoutes } from "./routes/health.js";
 import { gcalRoutes } from "./routes/gcal.js";
+import { billingRoutes } from "./routes/billing.js";
 
 initSentry();
 
 const app = Fastify({ logger: true });
 await app.register(healthRoutes);
 await app.register(gcalRoutes);
+await app.register(billingRoutes);
 
 app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
   app.log.error(err);
