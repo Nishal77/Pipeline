@@ -29,6 +29,18 @@ export default function Home() {
         <h2 className="text-xl font-semibold">Not ready yet?</h2>
         <WaitlistForm />
       </section>
+
+      <footer className="flex gap-4 text-xs text-zinc-400">
+        <a href="/privacy" className="underline">
+          Privacy
+        </a>
+        <a href="/terms" className="underline">
+          Terms
+        </a>
+        <a href="/status" className="underline">
+          Status
+        </a>
+      </footer>
     </main>
   );
 }
