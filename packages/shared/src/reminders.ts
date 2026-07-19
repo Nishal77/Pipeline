@@ -153,3 +153,36 @@ export async function sweepForwardingChecks(supabase: SupabaseClient, twilio: Tw
     }
   }
 }
+
+// FR-8.3 fair-use alert — 300 min/mo Solo, 600 min/mo Pro (PRD §18, current
+// values; recalibrate with real Phase 7 beta data per the roadmap). Dedup by
+// month so this fires once per account per month, not every sweep tick.
+const FAIR_USE_MINUTES: Record<string, number> = { solo: 300, pro: 600 };
+
+export async function sweepFairUseAlerts(supabase: SupabaseClient, twilio: TwilioCreds): Promise<void> {
+  const now = new Date();
+  const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
+  const { data: accounts } = await supabase.from("accounts").select("id, plan, owner_cell");
+  for (const account of accounts ?? []) {
+    const cap = FAIR_USE_MINUTES[account.plan] ?? FAIR_USE_MINUTES.solo;
+    if (await alreadyLogged(supabase, "fair_use_alert", { account_id: account.id, month: monthKey })) continue;
+
+    const { data: calls } = await supabase.from("calls").select("duration_s").eq("account_id", account.id).gte("started_at", monthStart.toISOString());
+    const totalMinutes = (calls ?? []).reduce((sum, c) => sum + c.duration_s, 0) / 60;
+    if (totalMinutes < cap * 0.8) continue;
+
+    const auth = Buffer.from(`${twilio.accountSid}:${twilio.authToken}`).toString("base64");
+    await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilio.accountSid}/Messages.json`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        To: account.owner_cell,
+        From: twilio.fromE164,
+        Body: `PipeLine: you've used ${Math.round(totalMinutes)} of ${cap} minutes this month (80%+). Check Settings if you'd like to upgrade.`,
+      }),
+    });
+    await logEvent(supabase, account.id, "fair_use_alert", { account_id: account.id, month: monthKey, minutes_used: Math.round(totalMinutes), cap });
+  }
+}

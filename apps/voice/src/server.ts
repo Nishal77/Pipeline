@@ -39,6 +39,7 @@ import {
   sweepReminders,
   sweepOwnerDigests,
   sweepForwardingChecks,
+  sweepFairUseAlerts,
   sendPushToAccount,
 } from "@pipeline/shared";
 
@@ -627,6 +628,14 @@ wss.on("connection", (twilioWs, req) => {
         triage_class: triageClass,
         duration_s: durationS,
       });
+      // §7 margin guardrail — $0.11/min is the sourced gpt-realtime-2.1 estimate
+      // from docs/adr/001-voice-stack.md (Phase 1), same constant used in the
+      // benchmark harness (optionA.ts). Re-check if pricing drifts.
+      await logEvent(supabase, ctx.account.id, "cost_per_call", {
+        call_id: callRow.id,
+        duration_s: durationS,
+        estimated_cost_usd: Number(((durationS / 60) * 0.11).toFixed(4)),
+      });
       console.log(`Call logged: ${outcome} — ${summary}`);
     });
   });
@@ -642,6 +651,7 @@ const SWEEP_INTERVAL_MS = 5 * 60_000;
 setInterval(() => {
   sweepReminders(supabase, twilioCreds).catch((err) => console.error("Reminder sweep failed:", err));
   sweepOwnerDigests(supabase, twilioCreds).catch((err) => console.error("Digest sweep failed:", err));
+  sweepFairUseAlerts(supabase, twilioCreds).catch((err) => console.error("Fair-use sweep failed:", err));
   if (process.env.VOICE_WEBHOOK_BASE_URL) {
     sweepForwardingChecks(supabase, twilioCreds, process.env.VOICE_WEBHOOK_BASE_URL).catch((err) =>
       console.error("Forwarding check sweep failed:", err),
