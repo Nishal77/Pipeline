@@ -38,6 +38,7 @@ import {
   handleInboundSms,
   sweepReminders,
   sweepOwnerDigests,
+  sweepForwardingChecks,
   sendPushToAccount,
 } from "@pipeline/shared";
 
@@ -641,4 +642,9 @@ const SWEEP_INTERVAL_MS = 5 * 60_000;
 setInterval(() => {
   sweepReminders(supabase, twilioCreds).catch((err) => console.error("Reminder sweep failed:", err));
   sweepOwnerDigests(supabase, twilioCreds).catch((err) => console.error("Digest sweep failed:", err));
+  if (process.env.VOICE_WEBHOOK_BASE_URL) {
+    sweepForwardingChecks(supabase, twilioCreds, process.env.VOICE_WEBHOOK_BASE_URL).catch((err) =>
+      console.error("Forwarding check sweep failed:", err),
+    );
+  }
 }, SWEEP_INTERVAL_MS);

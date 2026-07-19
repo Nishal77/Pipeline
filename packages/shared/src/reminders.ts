@@ -115,3 +115,41 @@ export async function sweepOwnerDigests(supabase: SupabaseClient, twilio: Twilio
     await logEvent(supabase, p.account_id, "digest_sent", { account_id: p.account_id, date: today, jobs: count });
   }
 }
+
+// §17 daily synthetic forwarding check — hits each account's own /voice
+// webhook once a day (dedup via events_analytics, same pattern as the
+// digest) and alerts the owner by SMS if it's not answering correctly.
+export async function sweepForwardingChecks(supabase: SupabaseClient, twilio: TwilioCreds, voiceWebhookBaseUrl: string): Promise<void> {
+  const now = new Date();
+  const { data: phones } = await supabase.from("phone_numbers").select("id, account_id, accounts(tz, owner_cell)");
+
+  for (const raw of phones ?? []) {
+    const p = raw as unknown as { id: string; account_id: string; accounts: { tz: string; owner_cell: string } };
+    const today = dateKeyInZone(now, p.accounts.tz);
+    if (await alreadyLogged(supabase, "forwarding_check", { account_id: p.account_id, date: today })) continue;
+
+    const res = await fetch(`${voiceWebhookBaseUrl}/voice`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "To=%2B10000000000&From=%2B10000000000",
+    }).catch(() => null);
+    const ok = Boolean(res?.ok);
+    const checkedAt = now.toISOString();
+
+    await supabase.from("phone_numbers").update({ last_synthetic_check_at: checkedAt, forwarding_verified_at: ok ? checkedAt : null }).eq("id", p.id);
+    await logEvent(supabase, p.account_id, "forwarding_check", { account_id: p.account_id, date: today, ok });
+
+    if (!ok) {
+      const auth = Buffer.from(`${twilio.accountSid}:${twilio.authToken}`).toString("base64");
+      await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilio.accountSid}/Messages.json`, {
+        method: "POST",
+        headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          To: p.accounts.owner_cell,
+          From: twilio.fromE164,
+          Body: "PipeLine alert: your call forwarding check failed today — calls may not be reaching your AI assistant. Check Settings.",
+        }),
+      });
+    }
+  }
+}
