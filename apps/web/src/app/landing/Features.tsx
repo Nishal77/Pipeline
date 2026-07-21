@@ -4,8 +4,8 @@ export default function Features() {
   return (
     <section id="features" className="relative border-t border-border px-6 py-24">
       <div className="mx-auto mb-14 flex max-w-2xl flex-col items-center gap-3 text-center">
-        <h2 className="text-3xl font-semibold tracking-tight">TODO: features section heading</h2>
-        <p className="text-muted">TODO: features section subheading</p>
+        <h2 className="text-3xl font-semibold tracking-tight">Built for plumbing calls, not generic small talk.</h2>
+        <p className="text-muted">Not a chatbot bolted onto a form. A phone assistant that actually understands the trade.</p>
       </div>
       <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-x-12 gap-y-10 sm:grid-cols-2">
         {FEATURES.map((f) => (
