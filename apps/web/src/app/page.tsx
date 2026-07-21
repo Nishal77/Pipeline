@@ -1,4 +1,5 @@
 import { JSON_LD } from "./landing/data";
+import AnnouncementBar from "./landing/AnnouncementBar";
 import Nav from "./landing/Nav";
 import Hero from "./landing/Hero";
 import ProductVisual from "./landing/ProductVisual";
@@ -19,6 +20,7 @@ export default function Home() {
           and AI answer engines (ChatGPT/Perplexity-style citations), not just Google. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
 
+      <AnnouncementBar />
       <Nav />
       <Hero />
       <ProductVisual />
