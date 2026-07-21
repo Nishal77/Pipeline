@@ -12,10 +12,41 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// No production domain registered yet — set NEXT_PUBLIC_SITE_URL before launch,
+// this fallback keeps OG/canonical tags valid for local/staging in the meantime.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pipeline-ai.example.com";
+const TITLE = "PipeLine — AI Answering Service for Plumbers | Never Miss a Call";
+const DESCRIPTION =
+  "PipeLine is a 24/7 AI phone receptionist built for solo plumbers. It answers every call, tells a real emergency from routine work, and books the job straight into your calendar — starting at $59/month.";
+
 export const metadata: Metadata = {
-  title: "PipeLine — The phone never goes to voicemail again",
-  description:
-    "A 24/7 AI phone assistant for solo plumbers. Answers every call, triages emergencies from routine work, and books the job while you're still under the sink.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: TITLE, template: "%s | PipeLine" },
+  description: DESCRIPTION,
+  keywords: [
+    "AI answering service for plumbers",
+    "AI receptionist for contractors",
+    "missed call answering service",
+    "plumber phone answering AI",
+    "24/7 answering service for small business",
+    "AI appointment booking phone",
+  ],
+  authors: [{ name: "PipeLine" }],
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "PipeLine",
+    title: TITLE,
+    description: DESCRIPTION,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({

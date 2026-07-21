@@ -79,9 +79,39 @@ const FAQS = [
   },
 ];
 
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      name: "PipeLine",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description:
+        "24/7 AI phone receptionist for solo plumbers. Answers every call, triages emergencies, and books jobs straight into the calendar.",
+      offers: [
+        { "@type": "Offer", name: "Solo", price: "59", priceCurrency: "USD", priceValidUntil: "2027-01-01" },
+        { "@type": "Offer", name: "Pro", price: "99", priceCurrency: "USD", priceValidUntil: "2027-01-01" },
+      ],
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQS.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    },
+  ],
+};
+
 export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-col overflow-hidden bg-background text-foreground">
+      {/* Structured data — SoftwareApplication + FAQPage, read by search crawlers
+          and AI answer engines (ChatGPT/Perplexity-style citations), not just Google. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
+
       {/* Sticky nav */}
       <nav className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/80 px-6 py-4 backdrop-blur">
         <span className="text-lg font-semibold tracking-tight">PipeLine</span>
@@ -108,16 +138,16 @@ export default function Home() {
       <div className="pointer-events-none absolute top-0 left-1/2 h-[600px] w-[900px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-accent/20 blur-[140px]" />
 
       {/* Hero */}
-      <section className="relative flex flex-col items-center gap-8 px-6 pt-24 pb-28 text-center">
+      <section className="relative flex flex-col items-center gap-8 px-6 pt-24 pb-16 text-center">
         <span className="rounded-full border border-border px-3 py-1 text-xs font-medium tracking-wide text-muted">
-          Built for solo plumbers
+          AI phone receptionist, built for solo plumbers
         </span>
         <h1 className="max-w-3xl text-5xl leading-[1.05] font-semibold tracking-tight sm:text-6xl">
           The phone never goes to <span className="text-accent">voicemail</span> again.
         </h1>
         <p className="max-w-xl text-lg text-muted">
-          A 24/7 AI answers every call, triages emergencies from routine work, and books the job —
-          while you&apos;re still under the sink.
+          PipeLine answers every call to your business line, tells a real emergency from routine work, and
+          books the job straight into your calendar — 24/7, while you&apos;re still under the sink.
         </p>
         <div className="flex flex-col items-center gap-3 sm:flex-row">
           <a
@@ -132,6 +162,52 @@ export default function Home() {
         </div>
         <p className="text-sm text-muted">
           It&apos;s a real AI, not a script — try booking yourself a fake job. Calls are recorded, and it&apos;ll tell you that too.
+        </p>
+      </section>
+
+      {/* Product visual — a stylized illustration of the owner app's Today
+          view, built in CSS/markup (not a photo/screenshot — no real
+          production UI has been captured yet, and a fabricated "screenshot"
+          would be dishonest). Shows the actual real features: live call log,
+          emergency flag, a job the AI just booked. */}
+      <section className="relative flex justify-center px-6 pb-24">
+        <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-border bg-white/[0.02] shadow-[0_0_80px_-20px_rgba(255,107,61,0.25)]">
+          <div className="flex items-center gap-2 border-b border-border px-5 py-3">
+            <span className="h-2.5 w-2.5 rounded-full bg-white/20" />
+            <span className="h-2.5 w-2.5 rounded-full bg-white/20" />
+            <span className="h-2.5 w-2.5 rounded-full bg-white/20" />
+            <span className="ml-3 text-xs text-muted">pipeline.app/today</span>
+          </div>
+          <div className="flex flex-col gap-3 p-5 text-left">
+            <div className="flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-red-400">Emergency — gas smell reported</p>
+                <p className="text-xs text-muted">Escalated to your cell · 2 min ago</p>
+              </div>
+              <span className="rounded-full bg-red-500/20 px-2 py-1 text-xs font-medium text-red-400">Live</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Drain cleaning — Maria T.</p>
+                <p className="text-xs text-muted">Today, 2:00 PM · 118 Birchwood Ave</p>
+              </div>
+              <span className="rounded-full border border-accent/40 px-2 py-1 text-xs font-medium text-accent">Booked</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Leak repair — James O.</p>
+                <p className="text-xs text-muted">Tomorrow, 9:30 AM · confirmed by SMS</p>
+              </div>
+              <span className="rounded-full border border-border px-2 py-1 text-xs text-muted">Confirmed</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between rounded-lg bg-white/[0.03] px-4 py-3">
+              <p className="text-sm text-muted">Calls answered today</p>
+              <p className="text-sm font-medium">7 / 7 — zero missed</p>
+            </div>
+          </div>
+        </div>
+        <p className="sr-only">
+          Illustration of the PipeLine owner dashboard, showing a live emergency escalation and two booked jobs.
         </p>
       </section>
 
