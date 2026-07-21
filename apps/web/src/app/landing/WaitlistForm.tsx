@@ -1,6 +1,6 @@
 "use client";
 import { useActionState } from "react";
-import { joinWaitlist } from "./waitlist-actions";
+import { joinWaitlist } from "../waitlist-actions";
 
 export default function WaitlistForm() {
   const [state, action, pending] = useActionState(joinWaitlist, {});
