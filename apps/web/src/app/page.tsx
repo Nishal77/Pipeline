@@ -4,6 +4,7 @@ import Hero from "./landing/Hero";
 import ProductVisual from "./landing/ProductVisual";
 import ProblemSection from "./landing/ProblemSection";
 import Features from "./landing/Features";
+import Comparison from "./landing/Comparison";
 import HowItWorks from "./landing/HowItWorks";
 import CostCalculator from "./landing/CostCalculator";
 import Pricing from "./landing/Pricing";
@@ -23,6 +24,7 @@ export default function Home() {
       <ProductVisual />
       <ProblemSection />
       <Features />
+      <Comparison />
       <HowItWorks />
 
       <section id="calculator" className="relative flex flex-col items-center gap-4 border-t border-border px-6 py-20">
