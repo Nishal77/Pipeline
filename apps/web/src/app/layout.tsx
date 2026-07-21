@@ -15,22 +15,17 @@ const geistMono = Geist_Mono({
 // No production domain registered yet — set NEXT_PUBLIC_SITE_URL before launch,
 // this fallback keeps OG/canonical tags valid for local/staging in the meantime.
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pipeline-ai.example.com";
-const TITLE = "PipeLine — AI Answering Service for Plumbers | Never Miss a Call";
-const DESCRIPTION =
-  "PipeLine is a 24/7 AI phone receptionist built for solo plumbers. It answers every call, tells a real emergency from routine work, and books the job straight into your calendar — starting at $59/month.";
+// TODO: page title (shows in browser tab + Google search result link)
+const TITLE = "TODO: page title";
+// TODO: meta description (shows under the title in Google search results)
+const DESCRIPTION = "TODO: meta description";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: TITLE, template: "%s | PipeLine" },
   description: DESCRIPTION,
-  keywords: [
-    "AI answering service for plumbers",
-    "AI receptionist for contractors",
-    "missed call answering service",
-    "plumber phone answering AI",
-    "24/7 answering service for small business",
-    "AI appointment booking phone",
-  ],
+  // TODO: search keywords
+  keywords: ["TODO: keyword 1", "TODO: keyword 2", "TODO: keyword 3"],
   authors: [{ name: "PipeLine" }],
   alternates: { canonical: "/" },
   robots: { index: true, follow: true },

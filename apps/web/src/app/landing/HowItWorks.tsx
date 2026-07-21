@@ -4,7 +4,7 @@ export default function HowItWorks() {
   return (
     <section id="how" className="relative border-t border-border px-6 py-24">
       <div className="mx-auto mb-14 flex max-w-2xl flex-col items-center gap-3 text-center">
-        <h2 className="text-3xl font-semibold tracking-tight">Live in one afternoon. Not a rollout.</h2>
+        <h2 className="text-3xl font-semibold tracking-tight">TODO: how-it-works heading</h2>
       </div>
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-10 sm:flex-row sm:gap-6">
         {STEPS.map((s) => (

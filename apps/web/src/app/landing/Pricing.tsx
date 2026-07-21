@@ -2,8 +2,8 @@ export default function Pricing() {
   return (
     <section id="pricing" className="relative flex flex-col items-center gap-10 border-t border-border px-6 py-20">
       <div className="flex flex-col items-center gap-3 text-center">
-        <h2 className="text-3xl font-semibold tracking-tight">One flat price. No per-minute surprises.</h2>
-        <p className="max-w-md text-muted">14-day trial, card required upfront. Cancel anytime — you keep every job it already booked.</p>
+        <h2 className="text-3xl font-semibold tracking-tight">TODO: pricing section heading</h2>
+        <p className="max-w-md text-muted">TODO: pricing section subheading</p>
       </div>
 
       <div className="grid w-full max-w-3xl grid-cols-1 gap-6 sm:grid-cols-2">
@@ -11,7 +11,7 @@ export default function Pricing() {
         <div className="flex flex-col gap-6 rounded-2xl border border-border p-8">
           <div>
             <h3 className="text-lg font-semibold">Solo</h3>
-            <p className="mt-1 text-sm text-muted">For a one-truck operation.</p>
+            <p className="mt-1 text-sm text-muted">TODO: Solo plan tagline</p>
           </div>
           <p className="text-4xl font-semibold tracking-tight">
             $59<span className="text-base font-normal text-muted">/mo</span>
@@ -47,11 +47,11 @@ export default function Pricing() {
         {/* Pro */}
         <div className="relative flex flex-col gap-6 rounded-2xl border border-accent p-8">
           <span className="absolute -top-3 left-8 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
-            Most jobs booked
+            TODO: Pro plan badge
           </span>
           <div>
             <h3 className="text-lg font-semibold">Pro</h3>
-            <p className="mt-1 text-sm text-muted">Running a small crew, or want a live hand-off.</p>
+            <p className="mt-1 text-sm text-muted">TODO: Pro plan tagline</p>
           </div>
           <p className="text-4xl font-semibold tracking-tight">
             $99<span className="text-base font-normal text-muted">/mo</span>
@@ -82,7 +82,7 @@ export default function Pricing() {
         </div>
       </div>
 
-      <p className="text-sm text-muted">Both plans: no setup fee, no long-term contract. It only quotes the prices you set — never invents a number.</p>
+      <p className="text-sm text-muted">TODO: pricing footer note</p>
     </section>
   );
 }
