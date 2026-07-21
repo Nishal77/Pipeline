@@ -9,3 +9,4 @@ export * from "./reminders.js";
 export * from "./tz.js";
 export * from "./gcal.js";
 export * from "./push.js";
+export * from "./metrics.js";

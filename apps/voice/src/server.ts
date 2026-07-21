@@ -667,9 +667,22 @@ wss.on("connection", (twilioWs, req) => {
         }
       }
 
+      // Phase 7 exit-gate metric (PRD §7.2, hang-up rate <10%) — the schema
+      // had this column since Phase 1 but nothing ever set it, so the metric
+      // would've silently been unmeasurable once real beta calls started.
+      const hangUpWithin10s = durationS <= 10 && outcome === "abandoned";
+
       await supabase
         .from("calls")
-        .update({ duration_s: durationS, outcome, summary, triage_class: triageClass, audio_url: audioUrl, transcript_url: transcriptUrl })
+        .update({
+          duration_s: durationS,
+          outcome,
+          summary,
+          triage_class: triageClass,
+          audio_url: audioUrl,
+          transcript_url: transcriptUrl,
+          hang_up_within_10s: hangUpWithin10s,
+        })
         .eq("id", callRow.id);
 
       await logEvent(supabase, ctx.account.id, "call_ended", {
