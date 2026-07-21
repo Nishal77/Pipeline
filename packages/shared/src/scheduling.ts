@@ -99,7 +99,12 @@ export async function checkAvailability(
   // Two-way sync, pull side: don't offer a slot the owner has personally
   // blocked off in their own Google Calendar, outside our booking system.
   const busyOnPersonalCalendar = opts.google
-    ? await busySlotsFromCalendar(supabase, opts.google, accountId, candidates)
+    ? await busySlotsFromCalendar(
+        supabase,
+        opts.google,
+        accountId,
+        candidates.map((start) => ({ start, end: new Date(start.getTime() + opts.durationMin * 60_000) })),
+      )
     : new Set<string>();
 
   const results: { slot_id: string; starts_at: string }[] = [];

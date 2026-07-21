@@ -103,11 +103,16 @@ export async function removeBookingFromCalendar(
 
 // Pull side: which of these candidate slots overlap an event already on the
 // owner's personal calendar (manually created, outside our booking system)?
+// Real interval overlap (slot.start < busy.end && slot.end > busy.start) —
+// checking only the slot's start instant against the busy range (the
+// original version) misses a slot that starts before a personal event but
+// runs into it, e.g. a 60-min job starting 2:00 with a personal appointment
+// 2:30-2:45 was never flagged, silently double-booking the owner's calendar.
 export async function busySlotsFromCalendar(
   supabase: SupabaseClient,
   google: GoogleCreds,
   accountId: string,
-  candidates: Date[],
+  candidates: { start: Date; end: Date }[],
 ): Promise<Set<string>> {
   const busy = new Set<string>();
   if (candidates.length === 0) return busy;
@@ -115,8 +120,8 @@ export async function busySlotsFromCalendar(
   const accessToken = await getValidAccessToken(supabase, google, accountId);
   if (!accessToken) return busy; // not connected — no personal-calendar conflicts to check
 
-  const timeMin = candidates[0].toISOString();
-  const timeMax = new Date(candidates[candidates.length - 1].getTime() + 3_600_000).toISOString();
+  const timeMin = candidates[0].start.toISOString();
+  const timeMax = new Date(Math.max(...candidates.map((c) => c.end.getTime()))).toISOString();
 
   const res = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
     method: "POST",
@@ -128,8 +133,10 @@ export async function busySlotsFromCalendar(
   const busyRanges = data.calendars?.primary?.busy ?? [];
 
   for (const slot of candidates) {
-    const overlaps = busyRanges.some((r) => slot.getTime() < new Date(r.end).getTime() && slot.getTime() >= new Date(r.start).getTime());
-    if (overlaps) busy.add(slot.toISOString());
+    const overlaps = busyRanges.some(
+      (r) => slot.start.getTime() < new Date(r.end).getTime() && slot.end.getTime() > new Date(r.start).getTime(),
+    );
+    if (overlaps) busy.add(slot.start.toISOString());
   }
   return busy;
 }
