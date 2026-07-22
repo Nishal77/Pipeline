@@ -8,6 +8,9 @@ export default function Nav() {
         <a href="#features" className="text-sm text-muted hover:text-foreground">
           Features
         </a>
+        <a href="#comparison" className="text-sm text-muted hover:text-foreground">
+          Compare
+        </a>
         <a href="#how" className="text-sm text-muted hover:text-foreground">
           How it works
         </a>

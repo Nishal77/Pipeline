@@ -17,10 +17,10 @@ export default function Comparison() {
   return (
     <section id="comparison" className="relative border-t border-border px-6 py-24">
       <div className="mx-auto mb-12 flex max-w-2xl flex-col items-center gap-3 text-center">
-        <h2 className="text-3xl font-semibold tracking-tight">Not every answering service is built the same.</h2>
+        <h2 className="text-3xl font-semibold tracking-tight">Taking a message isn&apos;t the hard part. Knowing what it means is.</h2>
         <p className="text-muted">
-          Generic AI answering services and phone-system AI add-ons can take a message. Whether they
-          understand what they&apos;re hearing is a different question.
+          Generic AI answering services and phone-system AI add-ons can pick up. Whether they understand
+          what they&apos;re hearing — and act on it — is a different question entirely.
         </p>
       </div>
       <div className="mx-auto w-full max-w-3xl overflow-x-auto">

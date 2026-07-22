@@ -29,7 +29,11 @@ export default function Home() {
       <Comparison />
       <HowItWorks />
 
-      <section id="calculator" className="relative flex flex-col items-center gap-4 border-t border-border px-6 py-20">
+      <section id="calculator" className="relative flex flex-col items-center gap-6 border-t border-border px-6 py-20 text-center">
+        <div className="flex flex-col items-center gap-3">
+          <h2 className="text-3xl font-semibold tracking-tight">The math you&apos;ve never actually run.</h2>
+          <p className="max-w-md text-muted">You know you miss calls. You&apos;ve probably never put a dollar figure on it.</p>
+        </div>
         <CostCalculator />
       </section>
 

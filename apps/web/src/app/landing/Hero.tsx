@@ -8,14 +8,14 @@ export default function Hero() {
 
       <section className="relative flex flex-col items-center gap-8 px-6 pt-24 pb-16 text-center">
         <span className="rounded-full border border-border px-3 py-1 text-xs font-medium tracking-wide text-muted">
-          AI receptionist built specifically for plumbers
+          The AI receptionist built specifically for plumbers
         </span>
         <h1 className="max-w-3xl text-5xl leading-[1.05] font-semibold tracking-tight sm:text-6xl">
           It knows a gas leak from a <span className="text-accent">dripping tap</span>.
         </h1>
         <p className="max-w-xl text-lg text-muted">
-          Most answering services just take a message. PipeLine actually understands the call — real
-          emergencies get you on the phone immediately, everything else gets booked without pulling you off the job.
+          Every AI answering service can pick up a phone. Almost none of them can tell an emergency from a
+          routine call. PipeLine can — it triages, books the job, and gets you on the phone the moment it matters.
         </p>
         <div className="flex flex-col items-center gap-3 sm:flex-row">
           <a
@@ -24,8 +24,8 @@ export default function Hero() {
           >
             Call {DEMO_NUMBER_DISPLAY} — try it now
           </a>
-          <a href="#calculator" className="px-4 py-4 text-sm font-medium text-muted underline underline-offset-4">
-            See what missed calls cost you
+          <a href="#comparison" className="px-4 py-4 text-sm font-medium text-muted underline underline-offset-4">
+            See how it compares
           </a>
         </div>
         <p className="text-sm text-muted">

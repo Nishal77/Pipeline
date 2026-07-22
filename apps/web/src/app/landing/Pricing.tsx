@@ -2,8 +2,8 @@ export default function Pricing() {
   return (
     <section id="pricing" className="relative flex flex-col items-center gap-10 border-t border-border px-6 py-20">
       <div className="flex flex-col items-center gap-3 text-center">
-        <h2 className="text-3xl font-semibold tracking-tight">One flat price. No per-minute surprises.</h2>
-        <p className="max-w-md text-muted">14-day trial, card required upfront. Cancel anytime — you keep every job it already booked.</p>
+        <h2 className="text-3xl font-semibold tracking-tight">One flat price. No per-minute meter running.</h2>
+        <p className="max-w-md text-muted">14-day trial, card required upfront. Cancel anytime — you keep every job it already booked, no penalty, no lock-in.</p>
       </div>
 
       <div className="grid w-full max-w-3xl grid-cols-1 gap-6 sm:grid-cols-2">
