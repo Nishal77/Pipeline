@@ -147,7 +147,17 @@ function bridgeToOpenAI(
   onCallEnd: (outcome: string, summary: string, triageClass: string, transcript: string, anyToolCalled: boolean) => void,
 ) {
   const { ctx } = session;
+  const connectStartedAt = Date.now();
   const openaiWs = new WebSocket(REALTIME_URL, { headers: { Authorization: `Bearer ${OPENAI_API_KEY}` } });
+  // NFR-6 diagnostics (docs/qa/phase-6-results.md): at 50-concurrent load only
+  // ~19/50 calls got a real greeting in time. Need to know WHERE the time
+  // goes — TCP/TLS handshake (Node contention), or after 'open' waiting on
+  // OpenAI's own session setup (their concurrency limit) — before that gap
+  // can be fixed. 'unexpected-response' is the ws library's event for a
+  // non-101 handshake reply (429 rate-limit would land here, not 'error').
+  openaiWs.on("unexpected-response", (_req, res) => {
+    console.error(`OpenAI Realtime handshake rejected: HTTP ${res.statusCode} after ${Date.now() - connectStartedAt}ms`);
+  });
   let disposition = "abandoned";
   let lastSummary = "";
   let triageClass = "ROUTINE";
@@ -155,6 +165,8 @@ function bridgeToOpenAI(
   let anyToolCalled = false;
   let sessionEstablished = false;
   let escalatedAlready = false;
+  let gotFirstAudio = false;
+  let firstAudioTimeout: ReturnType<typeof setTimeout> | undefined;
   const transcriptLines: string[] = [];
 
   // CLAUDE.md rule #3 "gas-smell script is hard-coded and non-editable" —
@@ -191,7 +203,10 @@ function bridgeToOpenAI(
   // key), redirect the live call to a static voicemail instead of leaving
   // the caller in dead air. A degraded call that took a message beats a
   // "working" one that never actually greeted anyone.
+  let voicemailFallbackTriggered = false;
   async function fallbackToVoicemail(reason: string): Promise<void> {
+    if (voicemailFallbackTriggered) return; // idempotent — the 6s establish timeout and 8s audio-stall timeout can't overlap, but the ws 'error' handler could still race either one
+    voicemailFallbackTriggered = true;
     console.error(`Falling back to voicemail: ${reason}`);
     const redirectTwiml =
       `<?xml version="1.0" encoding="UTF-8"?><Response>` +
@@ -221,6 +236,7 @@ function bridgeToOpenAI(
   }));
 
   openaiWs.on("open", () => {
+    console.log(`OpenAI WS open after ${Date.now() - connectStartedAt}ms`);
     openaiWs.send(
       JSON.stringify({
         type: "session.update",
@@ -393,10 +409,24 @@ function bridgeToOpenAI(
 
     if (event.type === "session.updated") {
       sessionEstablished = true;
+      console.log(`OpenAI session.updated after ${Date.now() - connectStartedAt}ms`);
       clearTimeout(sessionTimeout);
       openaiWs.send(JSON.stringify({ type: "response.create" }));
+      // Second circuit breaker: session establishing doesn't guarantee audio
+      // follows. Found live under load (docs/qa/phase-6-results.md) — hitting
+      // OpenAI's account TPM limit mid-session stalls response generation
+      // with no error event, no session-level failure, just silence. The 6s
+      // sessionTimeout above only guards establishment; this guards the gap
+      // after that where a caller can still get real dead air.
+      firstAudioTimeout = setTimeout(() => {
+        if (!gotFirstAudio) fallbackToVoicemail("no audio within 8s of session establishing (likely rate-limited)");
+      }, 8000);
     }
     if (event.type === "response.output_audio.delta") {
+      if (!gotFirstAudio) {
+        gotFirstAudio = true;
+        clearTimeout(firstAudioTimeout);
+      }
       const streamSid = await streamSidPromise;
       twilioWs.send(JSON.stringify({ event: "media", streamSid, media: { payload: event.delta } }));
     }
@@ -462,6 +492,7 @@ function bridgeToOpenAI(
     }
     if (msg.event === "stop") {
       clearTimeout(sessionTimeout);
+      clearTimeout(firstAudioTimeout);
       openaiWs.close();
       onCallEnd(
         disposition,
