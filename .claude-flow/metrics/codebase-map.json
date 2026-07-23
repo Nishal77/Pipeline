@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-07-21T11:28:22.216Z",
+  "projectRoot": "/Users/nishalpoojary/Projects/Saas/PipeLine",
+  "structure": {
+    "hasPackageJson": true,
+    "hasTsConfig": false,
+    "hasClaudeConfig": true,
+    "hasClaudeFlow": true
+  },
+  "scannedAt": 1784633302216
+}

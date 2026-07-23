@@ -15,14 +15,19 @@ import Footer from "./landing/Footer";
 
 export default function Home() {
   return (
-    <main className="relative flex min-h-screen flex-col overflow-hidden bg-background text-foreground">
+    <main className="relative flex min-h-screen flex-col overflow-hidden">
       {/* Structured data — SoftwareApplication + FAQPage, read by search crawlers
           and AI answer engines (ChatGPT/Perplexity-style citations), not just Google. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
 
-      <AnnouncementBar />
-      <Nav />
-      <Hero />
+      <div className="fixed top-0 left-0 right-0 z-50 w-full flex flex-col">
+        <AnnouncementBar />
+        <Nav />
+      </div>
+      <div className="w-full bg-[url('https://i.pinimg.com/736x/c8/5f/b1/c85fb15543d110ff419b5a057049ffe4.jpg')] bg-cover bg-top bg-no-repeat">
+        <div className="h-[108px] shrink-0" />
+        <Hero />
+      </div>
       <ProductVisual />
       <ProblemSection />
       <Features />

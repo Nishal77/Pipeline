@@ -4,7 +4,7 @@
 // emergency flag, a job the AI just booked.
 export default function ProductVisual() {
   return (
-    <section className="relative flex justify-center px-6 pb-24">
+    <section className="bg-[#FFFFFF] relative flex justify-center px-6 pb-24">
       <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-border bg-white/[0.02] shadow-[0_0_80px_-20px_rgba(255,107,61,0.25)]">
         <div className="flex items-center gap-2 border-b border-border px-5 py-3">
           <span className="h-2.5 w-2.5 rounded-full bg-white/20" />
