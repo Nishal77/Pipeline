@@ -59,8 +59,8 @@ const FEATURE_MATRIX = [
 
 function Check({ value }: { value: boolean | string }) {
   if (value === true) return <span className="text-accent">✓</span>;
-  if (value === false) return <span className="text-muted">—</span>;
-  return <span className="text-sm text-muted">{value}</span>;
+  if (value === false) return <span className="text-neutral-400">—</span>;
+  return <span className="text-sm text-neutral-500">{value}</span>;
 }
 
 export default async function PricingPage({ searchParams }: { searchParams: Promise<{ market?: string }> }) {
@@ -69,17 +69,17 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
   const { label: marketLabel } = MARKETS[market];
 
   return (
-    <main className="relative flex min-h-screen flex-col bg-background text-foreground">
+    <main className="relative flex min-h-screen flex-col bg-[#F7F6F2] text-[#08090a]">
       <Nav />
 
       <section className="relative flex flex-col items-center gap-6 px-6 pt-20 pb-12 text-center">
-        <span className="rounded-full border border-border px-3 py-1 text-xs font-medium tracking-wide text-muted">
+        <span className="rounded-full border border-neutral-200 px-3 py-1 text-xs font-medium tracking-wide text-neutral-500">
           Pricing — {marketLabel}
         </span>
         <h1 className="max-w-2xl text-4xl font-semibold tracking-tight sm:text-5xl">
           One flat price. No per-minute meter running.
         </h1>
-        <p className="max-w-md text-muted">
+        <p className="max-w-md text-neutral-600">
           14-day trial, card required upfront. Cancel anytime — you keep every job it already booked, no penalty.
         </p>
       </section>
@@ -88,24 +88,24 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
         {PLANS.map((plan) => (
           <div
             key={plan.name}
-            className={`flex flex-col gap-6 rounded-2xl border p-8 ${plan.highlight ? "border-accent" : "border-border"}`}
+            className={`flex flex-col gap-6 rounded-2xl border bg-white p-8 ${plan.highlight ? "border-accent" : "border-neutral-200"}`}
           >
             <span
               className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${
-                plan.highlight ? "bg-accent text-accent-foreground" : "border border-border text-muted"
+                plan.highlight ? "bg-accent text-accent-foreground" : "border border-neutral-200 text-neutral-500"
               }`}
             >
               {plan.tag}
             </span>
             <div>
               <h2 className="text-lg font-semibold">{plan.name}</h2>
-              <p className="mt-1 text-sm text-muted">{plan.tagline}</p>
+              <p className="mt-1 text-sm text-neutral-500">{plan.tagline}</p>
             </div>
             <p className="text-4xl font-semibold tracking-tight">
               ${plan.price}
-              <span className="text-base font-normal text-muted">/mo</span>
+              <span className="text-base font-normal text-neutral-500">/mo</span>
             </p>
-            <ul className="flex flex-col gap-3 text-sm text-muted">
+            <ul className="flex flex-col gap-3 text-sm text-neutral-600">
               {plan.features.map((f) => (
                 <li key={f} className="flex gap-2">
                   <span className="text-accent">✓</span> {f}
@@ -115,7 +115,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
             <a
               href="/onboarding"
               className={`mt-auto rounded-lg px-4 py-3 text-center text-sm font-medium ${
-                plan.highlight ? "bg-accent text-accent-foreground" : "border border-border hover:border-accent"
+                plan.highlight ? "bg-accent text-accent-foreground" : "border border-neutral-200 hover:border-accent"
               }`}
             >
               Start 14-day trial
@@ -124,20 +124,20 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
         ))}
       </section>
 
-      <section className="relative border-t border-border px-6 py-16">
+      <section className="relative border-t border-neutral-200 px-6 py-16">
         <h2 className="mb-8 text-center text-2xl font-semibold tracking-tight">Solo vs. Pro, side by side</h2>
         <div className="mx-auto w-full max-w-3xl overflow-x-auto">
           <table className="w-full min-w-[480px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-muted">
+              <tr className="border-b border-neutral-200 text-left text-neutral-500">
                 <th className="py-3 font-normal">Feature</th>
-                <th className="py-3 text-center font-medium text-foreground">Solo — $59/mo</th>
-                <th className="py-3 text-center font-medium text-foreground">Pro — $99/mo</th>
+                <th className="py-3 text-center font-medium text-[#08090a]">Solo — $59/mo</th>
+                <th className="py-3 text-center font-medium text-[#08090a]">Pro — $99/mo</th>
               </tr>
             </thead>
             <tbody>
               {FEATURE_MATRIX.map((row) => (
-                <tr key={row.label} className="border-b border-border">
+                <tr key={row.label} className="border-b border-neutral-200">
                   <td className="py-3 pr-4">{row.label}</td>
                   <td className="py-3 text-center">
                     <Check value={row.solo} />
@@ -152,9 +152,9 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
         </div>
       </section>
 
-      <section className="relative flex flex-col items-center gap-2 border-t border-border px-6 py-16 text-center">
+      <section className="relative flex flex-col items-center gap-2 border-t border-neutral-200 px-6 py-16 text-center">
         <h2 className="text-2xl font-semibold">No hidden per-minute fees, on either plan.</h2>
-        <p className="max-w-md text-sm text-muted">
+        <p className="max-w-md text-sm text-neutral-600">
           Unlike per-minute answering services, both plans are flat monthly rates. It only quotes the prices you
           set for jobs — never invents a number, never rounds up.
         </p>
