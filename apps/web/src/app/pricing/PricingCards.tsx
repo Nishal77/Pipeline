@@ -13,8 +13,12 @@ export default function PricingCards({ isAnnual }: { isAnnual: boolean }) {
         <div className="flex flex-col justify-between p-6 sm:p-8">
           <div>
             <div className="flex items-center justify-between mb-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-800 text-white shadow-sm">
-                <div className="h-4 w-4 rounded-full border-2 border-white/80 bg-neutral-800" />
+              <div className="relative h-16 w-16 overflow-hidden rounded-2xl p-[1px] ">
+                <img
+                  src="https://i.pinimg.com/736x/e0/fd/68/e0fd682ce3974b52416f5b3fe7ab5082.jpg"
+                  alt="Plan Icon"
+                  className="h-full w-full rounded-[15px] object-cover"
+                />
               </div>
             </div>
 
@@ -56,9 +60,18 @@ export default function PricingCards({ isAnnual }: { isAnnual: boolean }) {
         {/* Crew — embedded crisp white rounded container */}
         <div className="flex flex-col justify-between rounded-3xl bg-white p-6 sm:p-8 shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
           <div>
-            <div className="flex items-center justify-between mb-6">
+            {/* <div className="flex items-center justify-between mb-6">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-200 via-pink-300 to-sky-300 shadow-sm">
                 <div className="h-5 w-5 rounded-full bg-white/40 backdrop-blur-sm" />
+              </div>
+            </div> */}
+              <div className="flex items-center justify-between mb-6">
+              <div className="relative h-16 w-16 overflow-hidden rounded-2xl p-[1px] ">
+                <img
+                  src="https://i.pinimg.com/1200x/1e/6f/98/1e6f987fe510266d5305d9f7d3760eda.jpg"
+                  alt="Plan Icon"
+                  className="h-full w-full rounded-[15px] object-cover"
+                />
               </div>
             </div>
 

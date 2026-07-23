@@ -65,7 +65,7 @@ export default function Nav() {
         <div className="flex items-center gap-8">
           {/* Brand Logo */}
           <a href="#" className="flex items-center gap-2 group">
-            <span className="text-xl font-medium tracking-tight text-[#FFFFFF]">
+            <span className="text-xl font-medium tracking-tight text-[#000]">
            Pipeline
             </span>
           </a>
@@ -298,7 +298,7 @@ export default function Nav() {
           {/* Talk to Sales Dark Button */}
           <a
             href={`tel:${DEMO_NUMBER}`}
-            className="rounded-full bg-[#FFFFFF] px-4.5 py-2 text-sm font-medium text-black hover:bg-[#0c261b] transition-all shadow-3xs cursor-pointer whitespace-nowrap"
+            className="rounded-full bg-[#000] px-4.5 py-2 text-sm font-medium text-white hover:bg-[#0c261b] transition-all shadow-3xs cursor-pointer whitespace-nowrap"
           >
             Talk to Sales
           </a>

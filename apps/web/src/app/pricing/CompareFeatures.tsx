@@ -11,19 +11,24 @@ function FeatureCell({ value }: { value: boolean | string }) {
       </span>
     );
   if (value === false) return <span className="text-neutral-300">—</span>;
-  return <span className="text-xs font-medium text-neutral-600">{value}</span>;
+  return <span className="text-sm font-normal text-neutral-600">{value}</span>;
 }
 
 export default function CompareFeatures() {
   return (
-    <section className="relative border-t border-neutral-200/80 px-4 sm:px-8 py-14">
+    <section className="relative border-t border-neutral-200/80 px-4 sm:px-8 pt-0 pb-14">
       <GridTick position="top-left" />
       <GridTick position="top-right" />
 
-      <div className="mx-auto max-w-5xl">
-        {/* Sticky column headers */}
-        <div className="sticky top-[68px] z-10 border-b border-neutral-200 bg-[#FBFBFA]/95 backdrop-blur-md">
-          <div className="grid grid-cols-[1fr_140px_140px] items-end gap-4 py-6 sm:grid-cols-[1fr_200px_200px]">
+      <div className="mx-auto max-w-7xl">
+        {/* Sticky column headers — full-bleed border so the line touches the outer left/right edges */}
+        <div
+          className="sticky top-[68px] z-10 -mx-4 border-b border-neutral-200 bg-cover bg-center px-4 backdrop-blur-md sm:-mx-8 sm:px-8"
+          style={{
+            backgroundImage: "url(https://i.pinimg.com/1200x/13/19/f4/1319f4d3f391acacc992ff9392f35c14.jpg)",
+          }}
+        >
+          <div className="grid grid-cols-[1fr_140px_140px] items-end gap-4 py-12 sm:grid-cols-[1fr_200px_200px]">
             <h2 className="text-2xl font-medium tracking-tight text-neutral-900 sm:text-3xl">Compare every feature</h2>
             <div className="flex flex-col items-center gap-2">
               <span className="text-lg font-medium text-neutral-900">Solo</span>

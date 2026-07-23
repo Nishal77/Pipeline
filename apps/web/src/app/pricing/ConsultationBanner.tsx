@@ -1,4 +1,5 @@
-import { GridTick, PhoneIcon } from "./icons";
+import { GridTick } from "./icons";
+import { DEMO_NUMBER, DEMO_NUMBER_DISPLAY } from "../landing/data";
 
 export default function ConsultationBanner() {
   return (
@@ -6,33 +7,39 @@ export default function ConsultationBanner() {
       <GridTick position="top-left" />
       <GridTick position="top-right" />
 
-      <div className="mx-auto max-w-4xl relative overflow-hidden rounded-[36px] border border-white/60 bg-gradient-to-r from-amber-100/70 via-pink-100/70 via-purple-100/60 to-sky-200/70 p-8 sm:p-12 text-center shadow-lg backdrop-blur-2xl">
-        <div className="flex justify-center mb-4">
-          <div className="flex items-center -space-x-2">
-            <div className="relative h-12 w-12 rounded-full border-2 border-white overflow-hidden shadow-md bg-neutral-200">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80"
-                alt="Strategy Advisor"
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-white text-neutral-900 shadow-md">
-              <PhoneIcon className="w-4 h-4" />
-            </div>
+      <div
+        className="mx-auto max-w-7xl relative overflow-hidden rounded-2xl px-8 py-14 sm:px-14 sm:py-20"
+        style={{ backgroundImage: "url(https://i.pinimg.com/736x/f3/71/0c/f3710c43f5511f6955f0164ccf1e7f6a.jpg)", backgroundSize: "cover", backgroundPosition: "center" }}
+      >
+        <div className="absolute inset-0 opacity-100" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          backgroundSize: '200px 200px',
+          maskImage: 'radial-gradient(ellipse at center, black 60%, transparent 100%)',
+          WebkitMaskImage: 'radial-gradient(ellipse at center, black 60%, transparent 100%)'
+        }} />
+        <div className="relative max-w-lg">
+          <h2 className="text-3xl font-medium tracking-tight text-black sm:text-4xl">
+            The next call you miss is the one you&apos;ll wish you hadn&apos;t.
+          </h2>
+          <p className="mt-4 text-sm text-gray-600 sm:text-base">
+            Forward your number and it&apos;s live. No install, no rollout — the AI answers, sorts the
+            emergencies from the routine, and gets the job on your calendar while you&apos;re still on the job.
+          </p>
+
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <a
+              href="/onboarding"
+              className="rounded-full bg-[#FFEA5D] px-6 py-3.5 text-sm font-medium text-black transition-all duration-200 hover:bg-[#FFEE33] active:scale-[0.99]"
+            >
+              Try free for 7 days
+            </a>
+            <a
+              href={`tel:${DEMO_NUMBER}`}
+              className="rounded-full border border-neutral-900/20 bg-white/70 px-6 py-3.5 text-sm font-medium text-neutral-900 backdrop-blur-sm transition-all duration-200 hover:bg-white active:scale-[0.99]"
+            >
+              Call {DEMO_NUMBER_DISPLAY}
+            </a>
           </div>
-        </div>
-
-        <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-neutral-900">Not sure which plan is right for you?</h2>
-        <p className="mt-1.5 text-xs sm:text-sm text-neutral-600">Book a free 30-minute AI strategy session.</p>
-
-        <div className="mt-6 flex justify-center">
-          <a
-            href="/consultation"
-            className="inline-flex items-center gap-2 rounded-full bg-[#09090b] px-6 py-3.5 text-sm font-medium text-white transition-all duration-200 hover:bg-neutral-800 shadow-md active:scale-[0.99]"
-          >
-            Book a Free Consultation
-            <span className="text-base leading-none">→</span>
-          </a>
         </div>
       </div>
     </section>
