@@ -70,7 +70,10 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
 
   return (
     <main className="relative flex min-h-screen flex-col bg-[#F7F6F2] text-[#08090a]">
-      <Nav />
+      <div className="fixed top-0 right-0 left-0 z-50">
+        <Nav />
+      </div>
+      <div className="h-[68px] shrink-0" />
 
       <section className="relative flex flex-col items-center gap-6 px-6 pt-20 pb-12 text-center">
         <span className="rounded-full border border-neutral-200 px-3 py-1 text-xs font-medium tracking-wide text-neutral-500">
