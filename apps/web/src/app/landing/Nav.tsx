@@ -240,7 +240,7 @@ export default function Nav() {
             </div>
 
             <a
-              href="#pricing"
+              href="/pricing?market=us"
               className="px-3 py-2 rounded-lg hover:text-black transition-colors"
             >
               Pricing
@@ -364,7 +364,7 @@ export default function Nav() {
               Savings Calculator
             </a>
             <a
-              href="#pricing"
+              href="/pricing?market=us"
               onClick={() => setMobileMenuOpen(false)}
               className="py-2 px-3 rounded-lg hover:bg-black/5 text-neutral-900"
             >
