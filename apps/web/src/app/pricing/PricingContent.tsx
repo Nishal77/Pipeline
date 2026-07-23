@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Nav from "../landing/Nav";
-import Footer from "../landing/Footer";
 import { MARKETS } from "./data";
 import { GridTick } from "./icons";
 import PricingHero from "./PricingHero";
 import PricingCards from "./PricingCards";
 import CompareFeatures from "./CompareFeatures";
 import ConsultationBanner from "./ConsultationBanner";
+import PricingFaq from "./PricingFaq";
+import PricingFooter from "./PricingFooter";
 
 export default function PricingContent() {
   const [isAnnual, setIsAnnual] = useState(true);
@@ -36,12 +37,13 @@ export default function PricingContent() {
         <PricingCards isAnnual={isAnnual} />
         <CompareFeatures />
         <ConsultationBanner />
+        <PricingFaq />
 
         <GridTick position="bottom-left" />
         <GridTick position="bottom-right" />
       </div>
 
-      <Footer />
+      <PricingFooter />
     </main>
   );
 }

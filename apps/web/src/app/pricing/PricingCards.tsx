@@ -13,11 +13,11 @@ export default function PricingCards({ isAnnual }: { isAnnual: boolean }) {
         <div className="flex flex-col justify-between p-6 sm:p-8">
           <div>
             <div className="flex items-center justify-between mb-6">
-              <div className="relative h-16 w-16 overflow-hidden rounded-2xl p-[1px] ">
+              <div className="relative h-16 w-16 overflow-hidden rounded-2xl p-[1px]">
                 <img
                   src="https://i.pinimg.com/736x/e0/fd/68/e0fd682ce3974b52416f5b3fe7ab5082.jpg"
                   alt="Plan Icon"
-                  className="h-full w-full rounded-[15px] object-cover"
+                  className="h-full w-full rounded-[15px] object-cover mix-blend-multiply"
                 />
               </div>
             </div>
@@ -65,12 +65,12 @@ export default function PricingCards({ isAnnual }: { isAnnual: boolean }) {
                 <div className="h-5 w-5 rounded-full bg-white/40 backdrop-blur-sm" />
               </div>
             </div> */}
-              <div className="flex items-center justify-between mb-6">
-              <div className="relative h-16 w-16 overflow-hidden rounded-2xl p-[1px] ">
+            <div className="flex items-center justify-between mb-6">
+              <div className="relative h-16 w-16 overflow-hidden rounded-2xl p-[1px]">
                 <img
                   src="https://i.pinimg.com/1200x/1e/6f/98/1e6f987fe510266d5305d9f7d3760eda.jpg"
                   alt="Plan Icon"
-                  className="h-full w-full rounded-[15px] object-cover"
+                  className="h-full w-full rounded-[15px] object-cover mix-blend-multiply"
                 />
               </div>
             </div>
