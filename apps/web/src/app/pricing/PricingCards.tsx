@@ -1,148 +1,101 @@
 "use client";
 
-import { useState } from "react";
+import { PLANS } from "./data";
+import { CheckIcon } from "./icons";
 
-const PLANS = [
-  {
-    tag: "Solo plumber",
-    name: "Solo",
-    monthlyPrice: 59,
-    yearlyPrice: 53,
-    tagline: "For a one-truck operation.",
-    features: [
-      "24/7 AI answers every call",
-      "Emergency triage & gas-safety script",
-      "Real-time booking into your calendar",
-      "SMS confirmations, reminders & reschedule",
-      "Emergency escalation by SMS to your cell",
-      "1 calendar, 1 number, unlimited calls",
-    ],
-    highlight: false,
-  },
-  {
-    tag: "Small crew",
-    name: "Pro",
-    monthlyPrice: 99,
-    yearlyPrice: 89,
-    tagline: "Running a small crew, or want a live hand-off.",
-    features: [
-      "Everything in Solo",
-      "Live-transfer to your cell on emergencies, not just SMS",
-      "2 calendars — split jobs across two techs",
-      "Cloned-voice greeting — sounds like you, not a default AI",
-      "Priority support",
-    ],
-    highlight: true,
-  },
-];
-
-export default function PricingCards() {
-  const [isYearly, setIsYearly] = useState(false);
+export default function PricingCards({ isAnnual }: { isAnnual: boolean }) {
+  const [solo, crew] = PLANS;
 
   return (
-    <section className="relative mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
-      {/* Monthly/Yearly Toggle */}
-      <div className="flex items-center justify-center gap-3">
-        <span
-          className={`text-sm font-medium transition-colors ${
-            !isYearly ? "text-[#08090a]" : "text-neutral-400"
-          }`}
-        >
-          MONTHLY
-        </span>
-        <button
-          onClick={() => setIsYearly(!isYearly)}
-          className={`relative h-6 w-12 rounded-full transition-colors ${
-            isYearly ? "bg-[#FF6B3D]" : "bg-neutral-300"
-          }`}
-        >
-          <span
-            className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${
-              isYearly ? "left-7" : "left-1"
-            }`}
-          />
-        </button>
-        <span
-          className={`text-sm font-medium transition-colors ${
-            isYearly ? "text-[#08090a]" : "text-neutral-400"
-          }`}
-        >
-          ANNUALLY (SAVE 10%)
-        </span>
-      </div>
-
-      {/* Pricing Cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        {PLANS.map((plan) => {
-          const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
-          const period = isYearly ? "/mo (billed annually)" : "/mo";
-
-          return (
-            <div
-              key={plan.name}
-              className={`relative flex flex-col gap-6 rounded-2xl border p-8 shadow-xl transition-all hover:shadow-2xl ${
-                plan.highlight
-                  ? "border-[#FF6B3D] bg-gradient-to-br from-[#FFF7ED] to-white"
-                  : "border-neutral-200 bg-white"
-              }`}
-            >
-              {plan.highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#FF6B3D] px-4 py-1 text-xs font-semibold text-white shadow-lg">
-                  Most Popular
-                </span>
-              )}
-
-              <div className="flex items-center justify-between">
-                <span
-                  className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${
-                    plan.highlight
-                      ? "border border-[#FF6B3D] bg-[#FF6B3D]/10 text-[#FF6B3D]"
-                      : "border border-neutral-200 text-neutral-500"
-                  }`}
-                >
-                  {plan.tag}
-                </span>
+    <section className="relative mx-auto w-full max-w-7xl px-6 pt-20 pb-12">
+      <div className="rounded-3xl bg-[#F2F2F2] p-4 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-6 items-stretch">
+        {/* Solo — integrated into the gray background */}
+        <div className="flex flex-col justify-between p-6 sm:p-8">
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-800 text-white shadow-sm">
+                <div className="h-4 w-4 rounded-full border-2 border-white/80 bg-neutral-800" />
               </div>
-
-              <div>
-                <h2 className="text-xl font-bold text-[#08090a]">{plan.name}</h2>
-                <p className="mt-1 text-sm text-neutral-500">{plan.tagline}</p>
-              </div>
-
-              <div className="flex items-baseline gap-1">
-                <span className="text-5xl font-bold tracking-tight text-[#08090a]">
-                  ${price}
-                </span>
-                <span className="text-sm font-normal text-neutral-500">{period}</span>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <p className="text-sm font-semibold text-[#08090a]">What's included:</p>
-                <ul className="flex flex-col gap-3 text-sm text-neutral-600">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF6B3D]/10 text-[#FF6B3D]">
-                        ✓
-                      </span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <a
-                href="/onboarding"
-                className={`mt-auto rounded-lg px-4 py-3 text-center text-sm font-semibold transition-all hover:scale-105 ${
-                  plan.highlight
-                    ? "bg-[#FF6B3D] text-white shadow-lg shadow-[#FF6B3D]/25 hover:bg-[#E55A2D]"
-                    : "border-2 border-[#08090a] bg-[#08090a] text-white hover:bg-[#1A1B1E]"
-                }`}
-              >
-                Start 14-day trial
-              </a>
             </div>
-          );
-        })}
+
+            <div>
+              <h2 className="text-2xl font-medium tracking-tight text-neutral-900">{solo.name} - A few calls a day</h2>
+              <p className="mt-1 text-sm text-neutral-500 font-normal">{solo.tagline}</p>
+            </div>
+
+            <div className="mt-6 flex items-baseline">
+              <span className="text-4xl sm:text-5xl font-medium tracking-tight text-neutral-900">
+                ${isAnnual ? Math.floor(solo.price * 0.71) : solo.price}
+              </span>
+              <span className="ml-1 text-sm font-medium text-neutral-500">/Month</span>
+            </div>
+
+            <div className="my-6 h-[1px] w-full bg-neutral-300/60" />
+
+            <p className="mb-3 text-sm font-medium text-neutral-800 tracking-wide">{solo.featuresHeader}</p>
+            <ul className="flex flex-col gap-3 text-sm text-neutral-600">
+              {solo.features.map((f) => (
+                <li key={f} className="flex items-start gap-2.5">
+                  <CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-neutral-800" />
+                  <span className="leading-snug">{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mt-8">
+            <a
+              href="/onboarding"
+              className="block w-full rounded-2xl bg-[#FFEA5D] border border-gray-100 py-3.5 text-center text-sm font-medium text-black transition-all duration-200 hover:bg-[#FFEE33]"
+            >
+              Try free for 7 days
+            </a>
+          </div>
+        </div>
+
+        {/* Crew — embedded crisp white rounded container */}
+        <div className="flex flex-col justify-between rounded-3xl bg-white p-6 sm:p-8 shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-200 via-pink-300 to-sky-300 shadow-sm">
+                <div className="h-5 w-5 rounded-full bg-white/40 backdrop-blur-sm" />
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-2xl font-medium tracking-tight text-neutral-900">{crew.name} - Calls all day</h2>
+              <p className="mt-1 text-sm text-neutral-500 font-normal">{crew.tagline}</p>
+            </div>
+
+            <div className="mt-6 flex items-baseline">
+              <span className="text-4xl sm:text-5xl font-medium tracking-tight text-neutral-900">
+                ${isAnnual ? Math.floor(crew.price * 0.71) : crew.price}
+              </span>
+              <span className="ml-1 text-sm font-medium text-neutral-500">/Month</span>
+            </div>
+
+            <div className="my-6 h-[1px] w-full bg-neutral-200" />
+
+            <p className="mb-3 text-sm font-medium text-neutral-800 tracking-wide">{crew.featuresHeader}</p>
+            <ul className="flex flex-col gap-3 text-sm text-neutral-600">
+              {crew.features.map((f) => (
+                <li key={f} className="flex items-start gap-2.5">
+                  <CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-neutral-800" />
+                  <span className="leading-snug">{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mt-8">
+            <a
+              href="/onboarding"
+              className="block w-full rounded-2xl bg-[#FFEA5D] border border-gray-100 py-3.5 text-center text-sm font-medium text-black transition-all duration-200 hover:bg-[#FFEE33]"
+            >
+              Try free for 7 days
+            </a>
+          </div>
+        </div>
       </div>
     </section>
   );
