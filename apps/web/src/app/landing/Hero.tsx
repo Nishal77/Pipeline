@@ -4,10 +4,10 @@ export default function Hero() {
   return (
     <>
       <section className="relative flex flex-col items-center gap-8 px-6 pt-24 pb-16 text-center bg-transparent overflow-hidden">
-        <span className="rounded-full px-3 py-1 text-xs font-medium tracking-wide text-black bg-gray-100 p-2">
+        <span className="rounded-full px-3 py-1 text-xs font-semibold tracking-wide text-black bg-gray-100 p-2">
           The AI receptionist built specifically for plumbers
         </span>
-        <h1 className="max-w-3xl text-5xl leading-[1.05] font-normal tracking-tight sm:text-7xl text-white">
+        <h1 className="max-w-3xl text-5xl leading-[1.05] font-medium tracking-tight sm:text-7xl text-white">
           Your Phone Just Got a Lot Better at Its Job.
         </h1>
         <p className="max-w-xl text-lg text-white">
