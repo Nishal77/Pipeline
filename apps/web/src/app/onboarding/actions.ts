@@ -25,9 +25,14 @@ export async function createAccount(input: {
   ownerCell: string;
   email: string;
   zip: string;
-  services: { name: string; price: number; durationMin: number }[];
+  services: { name: string; durationMin: number }[];
   hours: Record<string, { open: string; close: string } | null>;
   radiusMiles: number;
+  tradeType: string;
+  numberSetupType: "forward" | "rent";
+  emergencyPolicy: Record<string, string>;
+  greetingScript?: string;
+  maxJobsPerDay: number;
 }): Promise<{ error?: string; accountId?: string }> {
   const supabase = await createClient();
   const {
@@ -52,18 +57,39 @@ export async function createAccount(input: {
     .single();
   if (accountErr || !account) return { error: accountErr?.message ?? "Failed to create account" };
 
-  const priceSheet = Object.fromEntries(input.services.map((s) => [s.name, s.price]));
+  // No price_sheet — quoting a number is out of scope, the AI always defers
+  // pricing to the owner (see agentPrompt.ts). price_sheet keeps its schema
+  // default ('{}').
   await supabase.from("business_profile").insert({
     account_id: account.id,
     greeting_name: input.businessName,
-    hours: { ...input.hours, max_jobs_per_day: 6 },
-    emergency_policy: { gas_leak: "leave_building_call_911" },
-    service_area: { zips: [input.zip], radius_miles: input.radiusMiles },
-    price_sheet: priceSheet,
+    hours: {
+      ...input.hours,
+      max_jobs_per_day: input.maxJobsPerDay,
+      number_setup_type: input.numberSetupType
+    },
+    emergency_policy: {
+      ...input.emergencyPolicy,
+      trade_type: input.tradeType
+    },
+    service_area: {
+      zips: [input.zip],
+      radius_miles: input.radiusMiles,
+      greeting_script: input.greetingScript
+    },
   });
 
+  // buffer = 60 - duration so the slot step lands on a clean hourly grid
+  // (9:00, 10:00, 11:00...) for any job under an hour. Jobs >= 60min get 0
+  // buffer and won't land on the hour — that's a real tradeoff, not a bug:
+  // fixing it means variable-length steps, which is what this replaced.
   await supabase.from("job_types").insert(
-    input.services.map((s) => ({ account_id: account.id, name: s.name, duration_min: s.durationMin, buffer_min: 30 })),
+    input.services.map((s) => ({
+      account_id: account.id,
+      name: s.name,
+      duration_min: s.durationMin,
+      buffer_min: Math.max(0, 60 - s.durationMin),
+    })),
   );
 
   await supabase.from("events_analytics").insert({ account_id: account.id, name: "onboarding_step_completed", properties: { step: 5, name: "account_created" } });
@@ -76,20 +102,29 @@ export async function createAccount(input: {
 // existing business number TO this one; the two are never the same number.
 // "Keep your number" (R6) just means the owner's original number stays what
 // customers dial; it doesn't change what Twilio needs to answer on.
-export async function provisionNumber(accountId: string): Promise<{ error?: string; e164?: string }> {
+export async function provisionNumber(accountId: string, candidateNumber?: string): Promise<{ error?: string; e164?: string }> {
   const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, VOICE_WEBHOOK_BASE_URL } = process.env;
   if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) return { error: "Twilio not configured" };
   const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64");
 
-  const searchRes = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/AvailablePhoneNumbers/US/Local.json?VoiceEnabled=true&SmsEnabled=true&PageSize=1`,
-    { headers: { Authorization: `Basic ${auth}` } },
-  );
-  const available = (await searchRes.json()) as { available_phone_numbers?: { phone_number: string }[] };
-  const candidate = available.available_phone_numbers?.[0]?.phone_number;
+  let candidate = candidateNumber;
+
+  // If candidate is a simulated number (+1 (XXX) 555-XXXX), it won't buy in live Twilio.
+  // So if candidate looks like a 555 number, or if buy fails, we fallback to buying a real available number.
+  const isSimulated = !candidate || candidate.includes("555-");
+
+  if (isSimulated) {
+    const searchRes = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/AvailablePhoneNumbers/US/Local.json?VoiceEnabled=true&SmsEnabled=true&PageSize=1`,
+      { headers: { Authorization: `Basic ${auth}` } },
+    );
+    const available = (await searchRes.json()) as { available_phone_numbers?: { phone_number: string }[] };
+    candidate = available.available_phone_numbers?.[0]?.phone_number;
+  }
+
   if (!candidate) return { error: "No numbers available right now" };
 
-  const buyRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/IncomingPhoneNumbers.json`, {
+  let buyRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/IncomingPhoneNumbers.json`, {
     method: "POST",
     headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -100,7 +135,32 @@ export async function provisionNumber(accountId: string): Promise<{ error?: stri
       SmsMethod: "POST",
     }),
   });
-  if (!buyRes.ok) return { error: `Twilio purchase failed: ${await buyRes.text()}` };
+
+  if (!buyRes.ok && !isSimulated) {
+    // If buying the specific candidate failed, fall back to searching a new live number
+    const searchRes = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/AvailablePhoneNumbers/US/Local.json?VoiceEnabled=true&SmsEnabled=true&PageSize=1`,
+      { headers: { Authorization: `Basic ${auth}` } },
+    );
+    const available = (await searchRes.json()) as { available_phone_numbers?: { phone_number: string }[] };
+    candidate = available.available_phone_numbers?.[0]?.phone_number;
+    
+    if (candidate) {
+      buyRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/IncomingPhoneNumbers.json`, {
+        method: "POST",
+        headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          PhoneNumber: candidate,
+          VoiceUrl: `${VOICE_WEBHOOK_BASE_URL}/voice`,
+          VoiceMethod: "POST",
+          SmsUrl: `${VOICE_WEBHOOK_BASE_URL}/sms`,
+          SmsMethod: "POST",
+        }),
+      });
+    }
+  }
+
+  if (!buyRes.ok || !candidate) return { error: `Twilio purchase failed: ${await buyRes.text()}` };
 
   const supabase = await createClient();
   const { error } = await supabase.from("phone_numbers").insert({ account_id: accountId, e164: candidate, type: "platform" });

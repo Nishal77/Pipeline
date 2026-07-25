@@ -16,24 +16,36 @@ function InstallPrompt() {
   const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent));
-    setIsStandalone(window.matchMedia("(display-mode: standalone)").matches);
+    const timer = setTimeout(() => {
+      setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent));
+      setIsStandalone(window.matchMedia("(display-mode: standalone)").matches);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   if (isStandalone) return null;
 
   return (
-    <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950">
-      <p className="font-medium">Install this app for quick access</p>
-      {isIOS ? (
-        <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-          Tap the Share button, then &quot;Add to Home Screen&quot;.
-        </p>
-      ) : (
-        <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-          Open your browser menu and choose &quot;Install app&quot; or &quot;Add to Home Screen&quot;.
-        </p>
-      )}
+    <div className="relative border border-dashed border-neutral-300 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+      {/* Corner Handles */}
+      <div className="absolute -top-1 -left-1 w-1.5 h-1.5 border border-neutral-400 bg-white z-20"></div>
+      <div className="absolute -top-1 -right-1 w-1.5 h-1.5 border border-neutral-400 bg-white z-20"></div>
+      <div className="absolute -bottom-1 -left-1 w-1.5 h-1.5 border border-neutral-400 bg-white z-20"></div>
+      <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 border border-neutral-400 bg-white z-20"></div>
+
+      <div>
+        <span className="text-[9px] font-bold tracking-wider text-neutral-400 uppercase">App Access</span>
+        <h3 className="text-xs font-semibold text-neutral-800 mt-1">Install PipeLine for quick access</h3>
+        {isIOS ? (
+          <p className="text-[11px] text-neutral-500 mt-1 leading-normal">
+            Tap the Share button in Safari, then choose &quot;Add to Home Screen&quot;.
+          </p>
+        ) : (
+          <p className="text-[11px] text-neutral-500 mt-1 leading-normal">
+            Open your browser menu and choose &quot;Install app&quot; or &quot;Add to Home Screen&quot;.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -44,10 +56,16 @@ function PushNotificationManager() {
 
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
-      setIsSupported(true);
+      const timer = setTimeout(() => {
+        setIsSupported(true);
+      }, 0);
+      
       navigator.serviceWorker.register("/sw.js", { scope: "/" }).then(async (registration) => {
-        setSubscription(await registration.pushManager.getSubscription());
+        const sub = await registration.pushManager.getSubscription();
+        setSubscription(sub);
       });
+      
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -71,18 +89,38 @@ function PushNotificationManager() {
   if (!isSupported) return null;
 
   return (
-    <div className="rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800">
+    <div className="relative border border-dashed border-neutral-300 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+      {/* Corner Handles */}
+      <div className="absolute -top-1 -left-1 w-1.5 h-1.5 border border-neutral-400 bg-white z-20"></div>
+      <div className="absolute -top-1 -right-1 w-1.5 h-1.5 border border-neutral-400 bg-white z-20"></div>
+      <div className="absolute -bottom-1 -left-1 w-1.5 h-1.5 border border-neutral-400 bg-white z-20"></div>
+      <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 border border-neutral-400 bg-white z-20"></div>
+
       {subscription ? (
-        <div className="flex items-center justify-between">
-          <span>Notifications are on for this device.</span>
-          <button onClick={unsubscribe} className="text-red-600 underline dark:text-red-400">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
+          <div>
+            <span className="text-[9px] font-bold tracking-wider text-neutral-400 uppercase">Device Alerts</span>
+            <p className="text-xs font-semibold text-neutral-800 mt-1">Notifications are active on this device</p>
+            <p className="text-[11px] text-neutral-500 mt-0.5">We will alert you instantly for new emergency bookings.</p>
+          </div>
+          <button
+            onClick={unsubscribe}
+            className="border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-red-600 text-[10px] font-bold uppercase py-1.5 px-3 tracking-wider rounded-none shrink-0 self-start sm:self-center transition-colors"
+          >
             Turn off
           </button>
         </div>
       ) : (
-        <div className="flex items-center justify-between">
-          <span>Get notified about emergencies and new bookings.</span>
-          <button onClick={subscribe} className="text-blue-600 underline dark:text-blue-400">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
+          <div>
+            <span className="text-[9px] font-bold tracking-wider text-neutral-400 uppercase">Device Alerts</span>
+            <p className="text-xs font-semibold text-neutral-800 mt-1">Get instant emergency alerts</p>
+            <p className="text-[11px] text-neutral-500 mt-0.5 font-normal">We can notify you directly for urgent bookings.</p>
+          </div>
+          <button
+            onClick={subscribe}
+            className="border border-neutral-300 bg-neutral-900 hover:bg-neutral-800 text-white text-[10px] font-bold uppercase py-1.5 px-3 tracking-wider rounded-none shrink-0 self-start sm:self-center transition-colors"
+          >
             Enable
           </button>
         </div>
@@ -92,8 +130,19 @@ function PushNotificationManager() {
 }
 
 export default function PushAndInstallBanner() {
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsStandalone(window.matchMedia("(display-mode: standalone)").matches);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const showInstall = !isStandalone;
+
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-3 px-4 pt-4">
+    <div className={`grid grid-cols-1 ${showInstall ? "md:grid-cols-2" : "grid-cols-1"} gap-4 w-full mb-8 z-10`}>
       <InstallPrompt />
       <PushNotificationManager />
     </div>

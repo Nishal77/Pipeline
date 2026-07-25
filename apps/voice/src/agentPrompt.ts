@@ -15,12 +15,9 @@ export const VOICE_TOOLS = [
 ] as const;
 
 export function buildInstructions(
-  profile: { greeting_name: string; price_sheet: Record<string, unknown> },
+  profile: { greeting_name: string },
   callerPhoneE164: string,
 ): string {
-  const prices = Object.entries(profile.price_sheet)
-    .map(([k, v]) => `${k}: $${v}`)
-    .join(", ");
   return (
     `You are the AI phone assistant for ${profile.greeting_name}, a plumbing business. ` +
     "Always respond in English only, regardless of what language the caller speaks. Never claim to be human. " +
@@ -40,7 +37,8 @@ export function buildInstructions(
     "right away, not after wrapping up the call. After a successful book_job, call send_sms with kind " +
     "'confirm' to text the caller a confirmation. " +
     "Call end_call once the call is wrapped up, with the right disposition. " +
-    (prices ? `Only quote these exact prices, never invent numbers: ${prices}. ` : "") +
+    "Never state a specific price. If asked how much something costs, say it depends on the specific job and " +
+    `${profile.greeting_name} will give an exact price once they see it. ` +
     "If the caller describes a gas smell or gas leak, immediately and firmly tell them to leave the building " +
     "and call the gas company or 911 before anything else, then call classify_urgency and escalate_to_owner " +
     "right away — do not continue with booking until they confirm they are safe."

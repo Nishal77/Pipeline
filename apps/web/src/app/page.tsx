@@ -7,7 +7,6 @@ import ProblemSection from "./landing/ProblemSection";
 import Workflows from "./landing/Workflows";
 import HowItWorks from "./landing/HowItWorks";
 import TriageTiers from "./landing/TriageTiers";
-import DemoCall from "./landing/DemoCall";
 import Comparison from "./landing/Comparison";
 import Testimonials from "./landing/Testimonials";
 import Pricing from "./landing/Pricing";
