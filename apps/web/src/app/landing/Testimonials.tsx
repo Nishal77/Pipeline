@@ -143,7 +143,7 @@ export default function Testimonials() {
 
         {/* Heading */}
         <h2 className="text-3xl font-normal tracking-tighter text-neutral-900 sm:text-5xl mt-4 leading-tight select-none">
-          They didn't hire a  <span className="bg-[#FAFB86] text-neutral-900 px-2 rounded-sm inline-block">receptionist</span>They hired this.
+          They didn&apos;t hire a  <span className="bg-[#FAFB86] text-neutral-900 px-2 rounded-sm inline-block">receptionist</span>They hired this.
         </h2>
       </div>
 

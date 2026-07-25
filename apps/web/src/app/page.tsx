@@ -7,7 +7,7 @@ import ProblemSection from "./landing/ProblemSection";
 import Workflows from "./landing/Workflows";
 import HowItWorks from "./landing/HowItWorks";
 import TriageTiers from "./landing/TriageTiers";
-import Features from "./landing/Features";
+import DemoCall from "./landing/DemoCall";
 import Comparison from "./landing/Comparison";
 import Testimonials from "./landing/Testimonials";
 import Pricing from "./landing/Pricing";
@@ -67,8 +67,8 @@ export default function Home() {
       <SectionDivider />
 
       {/* How It Works */}
-      <div className="w-full bg-[#FBFBFA]">
-        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+      <div className="w-full bg-[#191919]">
+        <div className="mx-auto max-w-7xl border-l border-r border-neutral-800 bg-[#191919]">
           <HowItWorks />
         </div>
       </div>
@@ -93,14 +93,14 @@ export default function Home() {
 
       <SectionDivider />
 
-      {/* Features */}
-      <div className="w-full bg-[#FBFBFA]">
+      {/* Demo Call */}
+      {/* <div className="w-full bg-[#FBFBFA]">
         <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
-          <Features />
+          <DemoCall />
         </div>
-      </div>
+      </div> */}
 
-      <SectionDivider />
+      {/* <SectionDivider /> */}
 
       {/* Testimonials */}
       <div className="w-full bg-[#FBFBFA]">

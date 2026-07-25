@@ -3,69 +3,69 @@ import React from "react";
 const COMPARISONS = [
   {
     capability: "Answers instantly, 24/7",
-    voicemail: "No — goes to voicemail, most callers hang up",
-    answeringService: "Sometimes — hold queue, scripted operator",
-    pipeline: "Yes, every call, every time",
+    voicemail: "No — goes to voicemail",
+    answeringService: "No — hold queue or call back",
+    pipeline: "Yes — instant answer, 24/7",
   },
   {
     capability: "Knows your trade",
     voicemail: "No",
-    answeringService: "No — reads a generic script, doesn't know a burst pipe from a clogged drain",
-    pipeline: "Yes — trained on your services, your price sheet",
+    answeringService: "No — generic operator",
+    pipeline: "Yes — custom trade-trained",
   },
   {
     capability: "Triages urgency",
     voicemail: "No",
-    answeringService: "Rarely — operator isn't trained to tell emergency from routine",
-    pipeline: "Yes — sorts EMERGENCY / URGENT-TODAY / ROUTINE automatically",
+    answeringService: "No — takes messages only",
+    pipeline: "Yes — automatic smart sorting",
   },
   {
     capability: "Handles safety-critical calls",
     voicemail: "No",
-    answeringService: "Inconsistent — depends who's on shift",
-    pipeline: "Yes — hard-coded gas/safety scripts, never skipped",
+    answeringService: "No — no safety scripts",
+    pipeline: "Yes — hard-coded safety alerts",
   },
   {
     capability: "Books the job on the spot",
-    voicemail: "No — you call back later, if you remember",
-    answeringService: "No — takes a message, you still have to call back",
-    pipeline: "Yes — straight into your calendar, no round-trip",
+    voicemail: "No — requires callback",
+    answeringService: "No — takes notes only",
+    pipeline: "Yes — live calendar sync",
   },
   {
     capability: "Confirms with the customer",
     voicemail: "No",
     answeringService: "No",
-    pipeline: "Yes — instant SMS confirmation, reminders, reschedule by text",
+    pipeline: "Yes — instant SMS updates",
   },
   {
     capability: "Sounds like your business",
     voicemail: "N/A",
-    answeringService: "Generic, same script every caller hears everywhere",
-    pipeline: "Yes — your name, your rules, your numbers",
+    answeringService: "No — reads standard scripts",
+    pipeline: "Yes — your pricing & rules",
   },
   {
     capability: "Cost",
-    voicemail: "Free, but the job's gone",
-    answeringService: "$1–3/min, adds up fast on a busy day",
-    pipeline: "Flat $59–99/mo, no per-minute meter",
+    voicemail: "Free — but loses jobs",
+    answeringService: "$1–3/min — bills add up",
+    pipeline: "Flat $49/mo flat rate",
   },
   {
     capability: "Setup time",
     voicemail: "None",
-    answeringService: "Days, contracts",
-    pipeline: "Under 15 minutes, no contract",
+    answeringService: "Days — contracts required",
+    pipeline: "Under 15 mins — no contract",
   },
   {
     capability: "Never claims to be human",
     voicemail: "N/A",
     answeringService: "N/A",
-    pipeline: "Always discloses it's AI, recording disclosure every call",
+    pipeline: "Always discloses it's AI",
   },
 ];
 
 export default function Comparison() {
   return (
-    <section id="comparison" className="relative w-full bg-[#FBFBFA] pt-8 pb-20 sm:pt-12 sm:pb-24">
+    <section id="comparison" className="relative w-full bg-[#FBFBFA] pt-8 pb-0 sm:pt-12 sm:pb-0">
       {/* Eyebrow & Left-Aligned Header */}
       <div className="mx-auto max-w-7xl px-6 sm:px-12 lg:px-8 mb-16">
         <span className="text-xl font-normal tracking-tight text-lime-600">What actually happens to the call</span>
@@ -76,8 +76,8 @@ export default function Comparison() {
       </div>
 
       {/* Comparison Table Container */}
-      <div className="mx-auto max-w-7xl px-6 sm:px-12 lg:px-8 w-full">
-        <div className="w-full overflow-x-auto border border-neutral-200 bg-white">
+      <div className="w-full">
+        <div className="w-full overflow-x-auto border-t border-neutral-200/80 bg-white">
           <table className="w-full min-w-[800px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-200 bg-neutral-50/50">

@@ -35,7 +35,7 @@ const WORKFLOWS = [
 
 export default function Workflows() {
   return (
-    <section className="relative w-full bg-[#FBFBFA] pt-8 pb-20 sm:pt-12 sm:pb-24">
+    <section className="relative w-full bg-[#FBFBFA] pt-8 pb-0 sm:pt-12 sm:pb-0">
       {/* Humanized, Left-Aligned Header */}
       <div className="mx-auto max-w-7xl px-6 sm:px-12 lg:px-8 mb-16">
         <h2 className="text-3xl font-medium tracking-tight text-neutral-900 sm:text-4xl max-w-2xl leading-tight">
@@ -48,14 +48,14 @@ export default function Workflows() {
 
       {/* Grid Layout */}
       <div className="mx-auto max-w-7xl w-full">
-        <div className="mt-0 grid w-full grid-cols-1 md:grid-cols-3 gap-0 border-t border-neutral-200 border-b border-neutral-200">
+        <div className="mt-0 grid w-full grid-cols-1 md:grid-cols-3 gap-0 border-t border-neutral-200 border-neutral-200">
           
           {/* Row 1 Headers */}
           {WORKFLOWS.slice(0, 3).map((w, idx) => (
             <div 
               key={w.title}
               className={`flex flex-col border-b border-neutral-200 ${
-                idx < 2 ? "md:border-r md:border-neutral-200" : ""
+                idx < 2 ? "md:border-r-[5px] md:border-double md:border-neutral-200" : ""
               }`}
             >
               <div className="flex items-center min-h-[72px] px-6 py-4 bg-neutral-50/50">
@@ -69,7 +69,7 @@ export default function Workflows() {
             <div 
               key={`${w.imageUrl}-content-r1`}
               className={`relative bg-white flex flex-col border-b border-neutral-200 ${
-                idx < 2 ? "md:border-r md:border-neutral-200" : ""
+                idx < 2 ? "md:border-r-[5px] md:border-double md:border-neutral-200" : ""
               }`}
             >
               {/* Image Section */}
@@ -92,8 +92,8 @@ export default function Workflows() {
           ))}
 
           {/* Row 2 Divider Band (represented as 3 empty cells with vertical divider borders to keep them continuous) */}
-          <div className="h-10 border-b border-neutral-200 bg-neutral-50/30 md:border-r md:border-neutral-200"></div>
-          <div className="h-10 border-b border-neutral-200 bg-neutral-50/30 md:border-r md:border-neutral-200"></div>
+          <div className="h-10 border-b border-neutral-200 bg-neutral-50/30 md:border-r-[5px] md:border-double md:border-neutral-200"></div>
+          <div className="h-10 border-b border-neutral-200 bg-neutral-50/30 md:border-r-[5px] md:border-double md:border-neutral-200"></div>
           <div className="h-10 border-b border-neutral-200 bg-neutral-50/30"></div>
 
           {/* Row 2 Headers */}
@@ -101,7 +101,7 @@ export default function Workflows() {
             <div 
               key={w.title}
               className={`flex flex-col border-b border-neutral-200 ${
-                idx < 2 ? "md:border-r md:border-neutral-200" : ""
+                idx < 2 ? "md:border-r-[5px] md:border-double md:border-neutral-200" : ""
               }`}
             >
               <div className="flex items-center min-h-[72px] px-6 py-4 bg-neutral-50/50">
@@ -115,7 +115,7 @@ export default function Workflows() {
             <div 
               key={`${w.imageUrl}-content-r2`}
               className={`relative bg-white flex flex-col ${
-                idx < 2 ? "md:border-r md:border-neutral-200" : ""
+                idx < 2 ? "md:border-r-[5px] md:border-double md:border-neutral-200" : ""
               }`}
             >
               {/* Image Section */}
