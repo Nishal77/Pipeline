@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T11:28:22.216Z",
+  "timestamp": "2026-07-25T07:46:03.803Z",
   "projectRoot": "/Users/nishalpoojary/Projects/Saas/PipeLine",
   "structure": {
     "hasPackageJson": true,
@@ -7,5 +7,5 @@
     "hasClaudeConfig": true,
     "hasClaudeFlow": true
   },
-  "scannedAt": 1784633302216
+  "scannedAt": 1784965563803
 }

@@ -135,27 +135,35 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
 
 export const PRICING_FAQS = [
   {
-    q: "What actually happens if I go over my minutes?",
-    a: "Nothing gets cut off mid-call. You get an alert once you cross 80% of your monthly minutes, with the option to upgrade if you're consistently running close to the limit. No surprise overage charge on the bill.",
+    q: "Does it sound robotic?",
+    a: "No. Sounds like a real person on your line — calm, clear, no dead air, no \"press 1 for...\" Try the demo number yourself before deciding. That said, it always discloses up front it's an AI and the call's recorded — never fakes being human.",
   },
   {
-    q: "Am I locked into a plan once I pick one?",
-    a: "No. Solo and Crew are both month to month. If your team grows and you outgrow Solo, or you want to scale back down, message us and we'll switch it for you — there's no self-serve toggle yet, but it's a same-day change either way.",
+    q: "What if it messes up a booking?",
+    a: "Every call gets a transcript, recording, and short summary you can review. Triage looks off or a job's wrong — fix it in seconds from the app, nothing's locked in without you seeing it. Unsure calls always err toward \"more urgent,\" never \"less.\"",
   },
   {
-    q: "Do I get charged the second I sign up?",
-    a: "Your card is required upfront to start the 14-day trial, but you're not charged the plan price until the trial ends. Cancel before then and you're not billed at all.",
+    q: "What if it can't handle the call?",
+    a: "Two failed attempts and it stops guessing — takes a structured message, pings you instead of pretending it understood. Urgent calls always get an escalation attempt to reach you live first.",
   },
   {
-    q: "What happens to my bookings if I cancel?",
-    a: "You keep every job it already booked — cancellation doesn't unwind past bookings. Your number just goes back to ringing straight through to voicemail once your billing period ends.",
+    q: "Is my number safe? Do I lose it?",
+    a: "Yours, always. We just forward it — one code, ten seconds to set up, same code to undo it anytime.",
   },
   {
-    q: "Do unused minutes roll over to next month?",
-    a: "No — the minute allowance resets each billing cycle. Most solo operators don't come close to 300/month; if you're consistently near the cap, that's usually a sign Crew's 600 minutes is the better fit.",
+    q: "What about contracts?",
+    a: "None. Month to month, cancel anytime from the app. Trial first, no surprise renewal.",
   },
   {
-    q: "Is there a fee to set up, or to cancel?",
-    a: "Zero either way. No setup fee to start, no cancellation fee to stop. You cancel directly, no retention call required.",
+    q: "Will it quote a price it shouldn't?",
+    a: "No. Only quotes from your price sheet — the one you set. Never invents a number.",
+  },
+  {
+    q: "Does it work for my trade?",
+    a: "Plumbing, HVAC, electrical, locksmith, garage door, roadside, clinics, handyman, pest, landscaping — the AI adapts triage and booking rules to whatever service you run.",
+  },
+  {
+    q: "Can customers text STOP?",
+    a: "Yes, honored instantly and globally — standard SMS compliance, no exceptions.",
   },
 ];

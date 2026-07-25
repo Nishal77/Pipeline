@@ -5,10 +5,11 @@ import Hero from "./landing/Hero";
 import ProductVisual from "./landing/ProductVisual";
 import ProblemSection from "./landing/ProblemSection";
 import Workflows from "./landing/Workflows";
+import HowItWorks from "./landing/HowItWorks";
+import TriageTiers from "./landing/TriageTiers";
 import Features from "./landing/Features";
 import Comparison from "./landing/Comparison";
-import HowItWorks from "./landing/HowItWorks";
-import CostCalculator from "./landing/CostCalculator";
+import Testimonials from "./landing/Testimonials";
 import Pricing from "./landing/Pricing";
 import Faq from "./landing/Faq";
 import FinalCta from "./landing/FinalCta";
@@ -65,10 +66,19 @@ export default function Home() {
 
       <SectionDivider />
 
-      {/* Features */}
+      {/* How It Works */}
       <div className="w-full bg-[#FBFBFA]">
         <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
-          <Features />
+          <HowItWorks />
+        </div>
+      </div>
+
+      <SectionDivider />
+
+      {/* Triage Tiers */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <TriageTiers />
         </div>
       </div>
 
@@ -83,33 +93,27 @@ export default function Home() {
 
       <SectionDivider />
 
-      {/* How It Works */}
+      {/* Features */}
       <div className="w-full bg-[#FBFBFA]">
         <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
-          <HowItWorks />
+          <Features />
         </div>
       </div>
 
       <SectionDivider />
 
-      {/* Calculator */}
+      {/* Testimonials */}
       <div className="w-full bg-[#FBFBFA]">
         <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
-          <section id="calculator" className="relative flex flex-col items-center gap-6 px-6 py-20 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <h2 className="text-3xl font-semibold tracking-tight text-neutral-900">The math you&apos;ve never actually run.</h2>
-              <p className="max-w-md text-muted">You know you miss calls. You&apos;ve probably never put a dollar figure on it.</p>
-            </div>
-            <CostCalculator />
-          </section>
+          <Testimonials />
         </div>
       </div>
 
       <SectionDivider />
 
       {/* Pricing */}
-      <div className="w-full bg-[#FBFBFA]">
-        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+      <div className="w-full bg-[#171717]">
+        <div className="mx-auto max-w-7xl border-l border-r border-white/10">
           <Pricing />
         </div>
       </div>
