@@ -5,7 +5,7 @@ import Link from "next/link";
 export default function AnnouncementBar() {
   return (
     <div className="relative z-30 flex min-h-[38px] w-full items-center bg-[#06150e] text-xs text-neutral-300 border-b border-[#0f291e]">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 sm:px-8">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 sm:px-8 border-l border-r border-[#0f291e]">
         {/* Left side: Announcement details */}
         <div className="flex flex-wrap items-center gap-2 text-center sm:text-left mx-auto sm:mx-0 py-2">
           <span>Allo MCP is live. Connect your business phone to any AI, today.</span>

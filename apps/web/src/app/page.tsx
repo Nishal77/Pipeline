@@ -12,6 +12,7 @@ import Pricing from "./landing/Pricing";
 import Faq from "./landing/Faq";
 import FinalCta from "./landing/FinalCta";
 import Footer from "./landing/Footer";
+import SectionDivider from "./landing/SectionDivider";
 
 export default function Home() {
   return (
@@ -24,28 +25,110 @@ export default function Home() {
         <AnnouncementBar />
         <Nav />
       </div>
-      <div className="w-full bg-[url('https://i.pinimg.com/736x/c8/5f/b1/c85fb15543d110ff419b5a057049ffe4.jpg')] bg-cover bg-top bg-no-repeat">
-        <div className="h-[108px] shrink-0" />
-        <Hero />
-      </div>
-      <ProductVisual />
-      <ProblemSection />
-      <Features />
-      <Comparison />
-      <HowItWorks />
 
-      <section id="calculator" className="relative flex flex-col items-center gap-6 border-t border-border px-6 py-20 text-center">
-        <div className="flex flex-col items-center gap-3">
-          <h2 className="text-3xl font-semibold tracking-tight">The math you&apos;ve never actually run.</h2>
-          <p className="max-w-md text-muted">You know you miss calls. You&apos;ve probably never put a dollar figure on it.</p>
+      {/* Hero */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <div className="h-[108px] shrink-0" />
+          <Hero />
         </div>
-        <CostCalculator />
-      </section>
+      </div>
+      
+      <SectionDivider />
 
-      <Pricing />
-      <Faq />
-      <FinalCta />
-      <Footer />
+      {/* Product Visual */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <ProductVisual />
+        </div>
+      </div>
+
+      <SectionDivider />
+
+      {/* Problem Section */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <ProblemSection />
+        </div>
+      </div>
+
+      <SectionDivider />
+
+      {/* Features */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <Features />
+        </div>
+      </div>
+
+      <SectionDivider />
+
+      {/* Comparison */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <Comparison />
+        </div>
+      </div>
+
+      <SectionDivider />
+
+      {/* How It Works */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <HowItWorks />
+        </div>
+      </div>
+
+      <SectionDivider />
+
+      {/* Calculator */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <section id="calculator" className="relative flex flex-col items-center gap-6 px-6 py-20 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <h2 className="text-3xl font-semibold tracking-tight text-neutral-900">The math you&apos;ve never actually run.</h2>
+              <p className="max-w-md text-muted">You know you miss calls. You&apos;ve probably never put a dollar figure on it.</p>
+            </div>
+            <CostCalculator />
+          </section>
+        </div>
+      </div>
+
+      <SectionDivider />
+
+      {/* Pricing */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <Pricing />
+        </div>
+      </div>
+
+      <SectionDivider />
+
+      {/* FAQ */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <Faq />
+        </div>
+      </div>
+
+      <SectionDivider />
+
+      {/* Final CTA */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <FinalCta />
+        </div>
+      </div>
+
+      <SectionDivider />
+
+      {/* Footer */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <Footer />
+        </div>
+      </div>
     </main>
   );
 }

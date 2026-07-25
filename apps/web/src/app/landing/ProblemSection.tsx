@@ -22,41 +22,78 @@ const PIPELINE_WAY = [
 
 export default function ProblemSection() {
   return (
-    <section className="relative mx-auto flex w-full max-w-6xl flex-col items-center bg-[#FBFBFA] px-6 py-24">
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-xs font-medium text-accent">
-        Same phone number. Completely different outcome.
-      </span>
-      <h2 className="mt-4 max-w-2xl text-center text-4xl font-semibold tracking-tight text-neutral-900 sm:text-5xl">
-        One column costs you jobs. <br className="hidden sm:block" />
-        The other <span className="text-accent">books them</span>.
-      </h2>
+    <section className="relative flex w-full flex-col items-center bg-[#FBFBFA] px-6 pt-0 pb-20 sm:px-12 sm:pt-0 sm:pb-24">
+      {/* Diagonal blueprint lines (constrained to main column border) */}
+      <div className="relative w-full h-12 overflow-visible">
+        {/* Diagonal lines overlay */}
+        <div className="absolute inset-0 mx-auto max-w-7xl pointer-events-none">
+          <svg className="w-full h-full text-neutral-200/80" fill="none">
+            <defs>
+              <pattern id="problem-diagonal-hatch" width="12" height="48" patternUnits="userSpaceOnUse">
+                <line x1="0" y1="0" x2="12" y2="48" stroke="currentColor" strokeWidth="1" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#problem-diagonal-hatch)" />
+          </svg>
+        </div>
+      </div>
 
-      <div className="mt-14 grid w-full grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Without PipeLine — gray */}
-        <div className="rounded-[28px] bg-neutral-100 p-8">
-          <h3 className="text-2xl font-semibold text-neutral-900">Without PipeLine</h3>
-          <p className="mt-1 text-sm text-neutral-500">Missed calls. Guesswork. Lost jobs.</p>
-          <div className="mt-6 flex flex-col gap-3">
+      {/* Dashed Grid Title Box */}
+      <div className="relative border border-dashed border-neutral-300 bg-white px-8 py-8 max-w-3xl text-center rounded-none shadow-[0_1px_3px_rgba(0,0,0,0.02)] mt-0">
+        {/* Corner blueprint handles */}
+        <div className="absolute -top-1 -left-1 w-2 h-2 border border-neutral-400 bg-white z-20"></div>
+        <div className="absolute -top-1 -right-1 w-2 h-2 border border-neutral-400 bg-white z-20"></div>
+        <div className="absolute -bottom-1 -left-1 w-2 h-2 border border-neutral-400 bg-white z-20"></div>
+        <div className="absolute -bottom-1 -right-1 w-2 h-2 border border-neutral-400 bg-white z-20"></div>
+        
+        {/* Solid horizontal line extensions to viewport edges */}
+        <div className="absolute right-full top-0 w-[100vw] border-t border-neutral-300/80"></div>
+        <div className="absolute left-full top-0 w-[100vw] border-t border-neutral-300/80"></div>
+        <div className="absolute right-full bottom-0 w-[100vw] border-b border-neutral-300/80"></div>
+        <div className="absolute left-full bottom-0 w-[100vw] border-b border-neutral-300/80"></div>
+        
+        <h2 className="text-3xl font-normal tracking-tight text-neutral-900 sm:text-4xl leading-tight">
+          One column <span className="bg-[#FAFB86] px-3.5 py-0.5 rounded-sm inline-block">costs you jobs</span>. The other books them.
+        </h2>
+      </div>
+
+      
+
+      {/* Comparison Grid */}
+      <div className="mt-16 grid w-full max-w-5xl grid-cols-1 gap-8 lg:grid-cols-2">
+        {/* Without PipeLine — clean gray card */}
+        <div className="rounded-none border border-neutral-200/60 bg-neutral-50/50 p-6 sm:p-8">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-xl font-medium text-neutral-900">Without PipeLine</h3>
+            <p className="text-xs text-neutral-500">Missed calls. Guesswork. Lost jobs.</p>
+          </div>
+          <div className="mt-8 flex flex-col gap-3">
             {OLD_WAY.map((item) => (
-              <div key={item} className="flex items-center gap-3 rounded-full bg-white px-5 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-50 text-sm">🙁</span>
-                <span className="text-sm text-neutral-700">{item}</span>
+              <div key={item} className="flex items-start gap-3 rounded-none border border-neutral-200/40 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                <svg className="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span className="text-sm text-neutral-600 leading-snug">{item}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* With PipeLine — black */}
-        <div className="relative overflow-hidden rounded-[28px] bg-[#0a0a0a] p-8 shadow-[0_0_120px_-30px_rgba(255,107,61,0.4)]">
-          <h3 className="text-2xl font-semibold text-white">
-            With <span className="text-accent">PipeLine</span>
-          </h3>
-          <p className="mt-1 text-sm text-white/50">Answered. Booked. Handled.</p>
-          <div className="mt-6 flex flex-col gap-3">
+        {/* With PipeLine — light card with green/accent highlight */}
+        <div className="relative overflow-hidden rounded-none border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-[0_12px_30px_rgba(0,0,0,0.02)]">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-xl font-medium text-neutral-900">
+              With <span className="text-lime-600 font-semibold">PipeLine</span>
+            </h3>
+            <p className="text-xs text-neutral-500">Answered. Booked. Handled.</p>
+          </div>
+          <div className="mt-8 flex flex-col gap-3">
             {PIPELINE_WAY.map((item) => (
-              <div key={item} className="flex items-center gap-3 rounded-full bg-white/[0.06] px-5 py-3.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/20 text-sm">🙂</span>
-                <span className="text-sm text-white/90">{item}</span>
+              <div key={item} className="flex items-start gap-3 rounded-none border border-lime-100 bg-lime-50/20 px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+                <svg className="w-4 h-4 text-lime-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-sm text-neutral-800 leading-snug">{item}</span>
               </div>
             ))}
           </div>

@@ -2,7 +2,7 @@ import { FEATURES } from "./data";
 
 export default function Features() {
   return (
-    <section id="features" className="relative border-t border-border px-6 py-24">
+    <section id="features" className="relative px-6 py-24">
       <div className="mx-auto mb-14 flex max-w-2xl flex-col items-center gap-3 text-center">
         <h2 className="text-3xl font-semibold tracking-tight">Not a chatbot with a phone number bolted on.</h2>
         <p className="text-muted">Generic AI answering services stop at &quot;take a message.&quot; This is built around what a plumbing call actually needs.</p>

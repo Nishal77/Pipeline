@@ -15,13 +15,13 @@ export default function WaitlistForm() {
         name="name"
         placeholder="Your name"
         required
-        className="rounded-lg border border-border bg-white/[0.02] px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
+        className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-accent focus:outline-none"
       />
       <input
         name="phone"
         placeholder="+1 555 555 5555"
         required
-        className="rounded-lg border border-border bg-white/[0.02] px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
+        className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-accent focus:outline-none"
       />
       {state.error && <p className="text-sm text-red-400">{state.error}</p>}
       <button

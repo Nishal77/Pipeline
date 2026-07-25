@@ -1,6 +1,6 @@
 export default function Footer() {
   return (
-    <footer className="relative flex flex-col items-center gap-4 border-t border-border px-6 py-10 text-xs text-muted">
+    <footer className="relative flex flex-col items-center gap-4 px-6 py-10 text-xs text-muted">
       <div className="flex gap-4">
         <a href="#features" className="underline">
           Features

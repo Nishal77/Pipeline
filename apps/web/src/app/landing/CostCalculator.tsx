@@ -13,8 +13,8 @@ export default function CostCalculator() {
   const monthlyLoss = Math.round(missedCallsPerMonth * bookRate * avgJobValue);
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-border bg-white/[0.02] p-6">
-      <h2 className="mb-4 text-lg font-semibold">What are missed calls costing you?</h2>
+    <div className="w-full max-w-md rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-sm">
+      <h2 className="mb-4 text-lg font-semibold text-neutral-900">What are missed calls costing you?</h2>
       <div className="flex flex-col gap-5 text-sm text-muted">
         <label className="flex flex-col gap-2">
           Calls per day: <span className="text-foreground">{callsPerDay}</span>

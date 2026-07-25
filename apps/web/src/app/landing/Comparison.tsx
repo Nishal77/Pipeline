@@ -15,7 +15,7 @@ function Cell({ value }: { value: boolean | string }) {
 
 export default function Comparison() {
   return (
-    <section id="comparison" className="relative border-t border-border px-6 py-24">
+    <section id="comparison" className="relative px-6 py-24">
       <div className="mx-auto mb-12 flex max-w-2xl flex-col items-center gap-3 text-center">
         <h2 className="text-3xl font-semibold tracking-tight">Taking a message isn&apos;t the hard part. Knowing what it means is.</h2>
         <p className="text-muted">

@@ -2,7 +2,7 @@ import { FAQS } from "./data";
 
 export default function Faq() {
   return (
-    <section id="faq" className="relative border-t border-border px-6 py-24">
+    <section id="faq" className="relative px-6 py-24">
       <div className="mx-auto mb-12 flex max-w-2xl flex-col items-center gap-3 text-center">
         <h2 className="text-3xl font-semibold tracking-tight">The questions every plumber asks before switching</h2>
       </div>
