@@ -4,6 +4,7 @@ import Nav from "./landing/Nav";
 import Hero from "./landing/Hero";
 import ProductVisual from "./landing/ProductVisual";
 import ProblemSection from "./landing/ProblemSection";
+import Workflows from "./landing/Workflows";
 import Features from "./landing/Features";
 import Comparison from "./landing/Comparison";
 import HowItWorks from "./landing/HowItWorks";
@@ -21,6 +22,7 @@ export default function Home() {
           and AI answer engines (ChatGPT/Perplexity-style citations), not just Google. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
 
+      {/* Fixed top-0 left-0 right-0 z-50 w-full flex flex-col */}
       <div className="fixed top-0 left-0 right-0 z-50 w-full flex flex-col">
         <AnnouncementBar />
         <Nav />
@@ -49,6 +51,15 @@ export default function Home() {
       <div className="w-full bg-[#FBFBFA]">
         <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
           <ProblemSection />
+        </div>
+      </div>
+
+      <SectionDivider />
+
+      {/* Workflows Section */}
+      <div className="w-full bg-[#FBFBFA]">
+        <div className="mx-auto max-w-7xl border-l border-r border-border bg-[#FBFBFA]">
+          <Workflows />
         </div>
       </div>
 
