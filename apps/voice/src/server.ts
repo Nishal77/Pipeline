@@ -37,6 +37,7 @@ import {
   cancelBooking,
   classifyUrgency,
   escalateToOwner,
+  handleEscalationDialStatus,
   sendSms,
   type BusinessHoursConfig,
   logEvent,
@@ -527,6 +528,36 @@ const server = createServer((req, res) => {
           `<Parameter name="to" value="${to}" /><Parameter name="from" value="${from}" />` +
           `</Stream></Connect></Response>`,
       );
+    });
+    return;
+  }
+  // Twilio's <Dial action> callback for the escalation transfer leg — see
+  // escalation.ts. Whatever TwiML this returns keeps running on the same
+  // live call, so retries and the final "leave a message" fallback both
+  // happen right here, not via a separate REST redirect.
+  if (req.method === "POST" && (req.url ?? "").startsWith("/escalation-status")) {
+    const url = new URL(req.url ?? "", `https://${req.headers.host}`);
+    const accountId = url.searchParams.get("account_id") ?? "";
+    const callId = url.searchParams.get("call_id") ?? "";
+    const ownerCell = url.searchParams.get("owner_cell") ?? "";
+    const reason = url.searchParams.get("reason") ?? "";
+    const attempt = Number(url.searchParams.get("attempt") ?? "1");
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", async () => {
+      const params = new URLSearchParams(body);
+      const dialCallStatus = params.get("DialCallStatus") ?? "failed";
+      const twiml = await handleEscalationDialStatus(supabase, {
+        accountId,
+        callId,
+        ownerCellE164: ownerCell,
+        reason,
+        attempt,
+        dialCallStatus,
+        origin: `https://${req.headers.host}`,
+      });
+      res.writeHead(200, { "Content-Type": "text/xml" });
+      res.end(twiml);
     });
     return;
   }

@@ -1,7 +1,7 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
 
-// FR-7 onboarding wizard. Stripe card capture (step 2 in the spec) and Google
+// FR-7 onboarding wizard. Lemon Squeezy card capture (step 2 in the spec) and Google
 // Calendar connect (step 8) are deliberately not here — billing is Phase 5
 // scope, and Calendar OAuth already exists as its own flow at
 // /oauth/google/start (apps/api), linked from the activation step instead of
@@ -25,7 +25,7 @@ export async function createAccount(input: {
   ownerCell: string;
   email: string;
   zip: string;
-  services: { name: string; durationMin: number }[];
+  services: { name: string; durationMin: number; price?: number }[];
   hours: Record<string, { open: string; close: string } | null>;
   radiusMiles: number;
   tradeType: string;
@@ -57,9 +57,13 @@ export async function createAccount(input: {
     .single();
   if (accountErr || !account) return { error: accountErr?.message ?? "Failed to create account" };
 
-  // No price_sheet — quoting a number is out of scope, the AI always defers
-  // pricing to the owner (see agentPrompt.ts). price_sheet keeps its schema
-  // default ('{}').
+  // price_sheet only gets entries the owner actually typed a number for —
+  // any service left blank stays absent, so the AI keeps deferring that
+  // quote to the owner instead of guessing (see agentPrompt.ts).
+  const priceSheet = Object.fromEntries(
+    input.services.filter((s) => s.price !== undefined && s.price > 0).map((s) => [s.name, s.price]),
+  );
+
   await supabase.from("business_profile").insert({
     account_id: account.id,
     greeting_name: input.businessName,
@@ -77,6 +81,7 @@ export async function createAccount(input: {
       radius_miles: input.radiusMiles,
       greeting_script: input.greetingScript
     },
+    price_sheet: priceSheet,
   });
 
   // buffer = 60 - duration so the slot step lands on a clean hourly grid
@@ -92,7 +97,7 @@ export async function createAccount(input: {
     })),
   );
 
-  await supabase.from("events_analytics").insert({ account_id: account.id, name: "onboarding_step_completed", properties: { step: 5, name: "account_created" } });
+  await supabase.from("events_analytics").insert({ account_id: account.id, name: "onboarding_step_completed", properties: { step: 6, name: "account_created" } });
 
   return { accountId: account.id };
 }

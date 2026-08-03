@@ -60,8 +60,8 @@ export async function getRetentionStats(): Promise<{ totalCalls: number; totalBo
 }
 
 // FR-8.5 self-serve cancel — cancels at period end via apps/api's billing
-// route (real Stripe subscription cancellation), not immediately, so the
-// owner keeps access through what they already paid for.
+// route (real Lemon Squeezy subscription cancellation), not immediately, so
+// the owner keeps access through what they already paid for.
 export async function cancelSubscription(): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { data: account } = await supabase.from("accounts").select("id").single();

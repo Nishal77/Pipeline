@@ -13,7 +13,8 @@ export const Account = z.object({
   email: z.string().email(),
   tz: z.string(), // IANA tz name
   plan: Plan,
-  stripe_customer_id: z.string().nullable(),
+  ls_customer_id: z.string().nullable(),
+  ls_subscription_id: z.string().nullable(),
   status: AccountStatus,
   trial_ends_at: z.string().datetime().nullable(),
   created_at: z.string().datetime(),

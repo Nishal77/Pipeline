@@ -10,8 +10,9 @@ const EnvSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   GOOGLE_REDIRECT_URI: z.string().url(),
-  STRIPE_SECRET_KEY: z.string().min(1),
-  STRIPE_WEBHOOK_SECRET: z.string().optional().or(z.literal("").transform(() => undefined)),
+  LEMONSQUEEZY_API_KEY: z.string().min(1),
+  LEMONSQUEEZY_STORE_ID: z.string().min(1),
+  LEMONSQUEEZY_WEBHOOK_SECRET: z.string().optional().or(z.literal("").transform(() => undefined)),
   SITE_URL: z.string().url().default("http://localhost:3000"),
 });
 

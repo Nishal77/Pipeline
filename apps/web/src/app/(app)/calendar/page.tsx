@@ -5,8 +5,8 @@ import { cancelBookingManually, toggleVacationMode } from "./actions";
 
 // FR-6.3 Calendar screen. Drag-reschedule (spec) is a datetime input + submit
 // here instead — same functional outcome, no drag-and-drop library needed for
-// a v1. Google-sync-broken banner isn't built (would need a re-auth flow in
-// Settings first).
+// a v1. Google-sync-broken banner lives in Settings, not here (that's where
+// the reconnect action/OAuth entry point already is).
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ view?: string; date?: string }> }) {
   const { view = "week", date } = await searchParams;
   const supabase = await createClient();

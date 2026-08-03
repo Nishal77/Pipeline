@@ -120,7 +120,7 @@ const COUNTRIES = [
   { name: "India", code: "+91", flag: "🇮🇳", placeholder: "98765 43210" },
 ];
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -136,17 +136,19 @@ export default function OnboardingPage() {
   const [email, setEmail] = useState("");
   const [tradeType, setTradeType] = useState("");
 
-  // Step 2: Number Setup
+  // Step 3: Number Setup
   const [numberSetupType, setNumberSetupType] = useState<"forward" | "rent">("forward");
   const [rentAreaCode, setRentAreaCode] = useState("");
   const [selectedTwilioNumber, setSelectedTwilioNumber] = useState<string | null>(null);
 
-  // Step 3: Service Area
+  // Step 4: Service Area
   const [zip, setZip] = useState("");
   const [radiusMiles, setRadiusMiles] = useState(15);
 
-  // Step 4: Services
-  const [services, setServices] = useState<{ name: string; durationMin: number; enabled: boolean }[]>([]);
+  // Step 2: Services & pricing (price is optional — PRD rule "AI never
+  // invents numbers", so an unset price just means the AI keeps deferring
+  // that job type to the owner instead of quoting it)
+  const [services, setServices] = useState<{ name: string; durationMin: number; enabled: boolean; price: string }[]>([]);
 
   // Step 5: Hours
   const [hours, setHours] = useState<Record<string, { open: string; close: string } | null>>({
@@ -235,7 +237,7 @@ export default function OnboardingPage() {
       ownerCell: finalOwnerCell,
       email,
       zip: cleanZip,
-      services: selectedServices,
+      services: selectedServices.map((s) => ({ name: s.name, durationMin: s.durationMin, price: s.price ? Number(s.price) : undefined })),
       hours,
       radiusMiles,
       tradeType,
@@ -247,9 +249,9 @@ export default function OnboardingPage() {
     setBusy(false);
     if (result.error || !result.accountId) return setError(result.error ?? "Something went wrong");
     setAccountId(result.accountId);
-    
-    // Proceed to Step 5 (provisioning backend Twilio endpoint number)
-    await goToStep(5, "account_created");
+
+    // Proceed to Step 6 (provisioning backend Twilio endpoint number)
+    await goToStep(6, "account_created");
   }
 
   async function handleProvisionNumber() {
@@ -377,7 +379,7 @@ export default function OnboardingPage() {
                           setTradeType(val);
                           const config = TRADE_CONFIGS[val];
                           if (config) {
-                            setServices(config.services.map((s) => ({ ...s, enabled: true })));
+                            setServices(config.services.map((s) => ({ ...s, enabled: true, price: "" })));
                             setGreetingScript(config.defaultGreeting.replace("{businessName}", businessName || "your business"));
                           }
                         }}
@@ -462,8 +464,66 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 2: NUMBER SETUP SELECTOR */}
+          {/* STEP 2: SERVICES & PRICING */}
           {step === 2 && (
+            <div className="flex flex-col gap-6">
+              <div>
+                <h1 className="text-xl font-medium text-neutral-900">Confirm your services & pricing</h1>
+                <p className="text-sm text-neutral-500 mt-1">
+                  Toggle the services you offer. Prices are optional — leave any blank and the AI will always defer that
+                  quote to you instead of guessing a number.
+                </p>
+              </div>
+
+              {services.length === 0 ? (
+                <p className="text-xs text-neutral-500">Pick a trade in the previous step to load its service catalog.</p>
+              ) : (
+                <div className="flex flex-col gap-2.5 max-h-[360px] overflow-y-auto pr-1">
+                  {services.map((s, i) => (
+                    <div key={s.name} className="flex items-center justify-between gap-3 border border-neutral-200 p-3 bg-neutral-50/30 rounded-lg">
+                      <label className="flex items-center gap-3 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={s.enabled}
+                          onChange={() =>
+                            setServices((prev) => prev.map((svc, idx) => (idx === i ? { ...svc, enabled: !svc.enabled } : svc)))
+                          }
+                          className="h-4 w-4 rounded-none text-neutral-900 focus:ring-neutral-900 border-neutral-300 shrink-0"
+                        />
+                        <span className="text-sm font-medium text-neutral-800 truncate">{s.name}</span>
+                        <span className="text-xs text-neutral-400 shrink-0">{s.durationMin}min</span>
+                      </label>
+                      <div className="relative shrink-0">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400">$</span>
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="optional"
+                          value={s.price}
+                          disabled={!s.enabled}
+                          onChange={(e) =>
+                            setServices((prev) => prev.map((svc, idx) => (idx === i ? { ...svc, price: e.target.value } : svc)))
+                          }
+                          className="w-28 border border-neutral-300 bg-white pl-5 pr-2 py-1.5 text-sm text-neutral-900 rounded-md focus:outline-none focus:ring-1 focus:ring-neutral-900/20 focus:border-neutral-900 disabled:opacity-40"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                className="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-medium py-3 px-4 rounded-md transition-colors border border-neutral-900 disabled:opacity-50 mt-2"
+                disabled={services.filter((s) => s.enabled).length === 0}
+                onClick={() => goToStep(3, "services_pricing")}
+              >
+                Continue
+              </button>
+            </div>
+          )}
+
+          {/* STEP 3: NUMBER SETUP SELECTOR */}
+          {step === 3 && (
             <div className="flex flex-col gap-6">
               <div>
                 <h1 className="text-xl font-medium text-neutral-900">Choose phone routing setup</h1>
@@ -617,15 +677,15 @@ export default function OnboardingPage() {
               <button
                 className="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-medium py-3 px-4 rounded-lg transition-colors border border-neutral-900 mt-2 disabled:opacity-50"
                 disabled={numberSetupType === "rent" && !selectedTwilioNumber}
-                onClick={() => goToStep(3, "number_setup_type")}
+                onClick={() => goToStep(4, "number_setup_type")}
               >
                 Continue
               </button>
             </div>
           )}
 
-          {/* STEP 3: SERVICE AREA */}
-          {step === 3 && (
+          {/* STEP 4: SERVICE AREA */}
+          {step === 4 && (
             <div className="flex flex-col gap-6">
               <div>
                 <h1 className="text-xl font-medium text-neutral-900">Define your service area</h1>
@@ -671,15 +731,15 @@ export default function OnboardingPage() {
               <button
                 className="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-medium py-3 px-4 rounded-lg transition-colors border border-neutral-900 disabled:opacity-50 mt-2"
                 disabled={!zip}
-                onClick={() => goToStep(4, "service_area")}
+                onClick={() => goToStep(5, "service_area")}
               >
                 Continue
               </button>
             </div>
           )}
 
-          {/* STEP 4: HOURS & DAILY CAP */}
-          {step === 4 && (
+          {/* STEP 5: HOURS & DAILY CAP */}
+          {step === 5 && (
             <div className="flex flex-col gap-6">
               <div>
                 <h1 className="text-xl font-medium text-neutral-900">Set availability & workload caps</h1>
@@ -751,8 +811,8 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 5: ACTIVATION TEST CALL */}
-          {step === 5 && !numberE164 && (
+          {/* STEP 6: ACTIVATION TEST CALL */}
+          {step === 6 && !numberE164 && (
             <div className="flex flex-col gap-6">
               <div>
                 <h1 className="text-xl font-medium text-neutral-900">Provision your AI line</h1>
@@ -778,7 +838,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {step === 5 && numberE164 && !activated && (
+          {step === 6 && numberE164 && !activated && (
             <div className="flex flex-col gap-6">
               <div>
                 <h1 className="text-xl font-medium text-neutral-900">Activate your assistant</h1>

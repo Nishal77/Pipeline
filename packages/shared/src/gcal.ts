@@ -4,8 +4,13 @@
 // reading the owner's *personal* Google Calendar so we don't offer a slot
 // they've manually blocked off outside our system. Push side creates/updates/
 // deletes a mirror event on booking/reschedule/cancel; pull side is a
-// freebusy check folded into availability. Re-auth banner (expired refresh
-// token) is owner-app UI — Phase 4, not built here.
+// freebusy check folded into availability.
+//
+// Re-auth banner: `sync_broken` rides inside the same gcal_credentials jsonb
+// blob (no new column/migration) — set the moment a refresh fails or the
+// refresh_token is gone, cleared automatically the next time a refresh
+// succeeds (the success path overwrites the whole object without that key).
+// Settings page reads it to show the banner; nothing else needs to poll.
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface GoogleCreds {
@@ -17,6 +22,14 @@ interface StoredTokens {
   access_token: string;
   refresh_token?: string;
   expires_at: string;
+  sync_broken?: boolean;
+}
+
+async function markSyncBroken(supabase: SupabaseClient, accountId: string, tokens: StoredTokens): Promise<void> {
+  await supabase
+    .from("business_profile")
+    .update({ gcal_credentials: { ...tokens, sync_broken: true } })
+    .eq("account_id", accountId);
 }
 
 async function getValidAccessToken(supabase: SupabaseClient, google: GoogleCreds, accountId: string): Promise<string | null> {
@@ -25,7 +38,10 @@ async function getValidAccessToken(supabase: SupabaseClient, google: GoogleCreds
   if (!tokens) return null; // account hasn't connected Google Calendar — sync is optional, not required
 
   if (new Date(tokens.expires_at).getTime() > Date.now() + 60_000) return tokens.access_token;
-  if (!tokens.refresh_token) return null; // expired and can't refresh — needs re-auth (Phase 4 banner)
+  if (!tokens.refresh_token) {
+    await markSyncBroken(supabase, accountId, tokens);
+    return null;
+  }
 
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -37,7 +53,10 @@ async function getValidAccessToken(supabase: SupabaseClient, google: GoogleCreds
       grant_type: "refresh_token",
     }),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    await markSyncBroken(supabase, accountId, tokens);
+    return null;
+  }
   const refreshed = (await res.json()) as { access_token: string; expires_in: number };
 
   await supabase
@@ -52,6 +71,18 @@ async function getValidAccessToken(supabase: SupabaseClient, google: GoogleCreds
     .eq("account_id", accountId);
 
   return refreshed.access_token;
+}
+
+// Settings page calls this directly (no need to attempt a real API call just
+// to check status) — reads the same jsonb blob getValidAccessToken maintains.
+export async function getGoogleCalendarStatus(
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<"not_connected" | "connected" | "sync_broken"> {
+  const { data: profile } = await supabase.from("business_profile").select("gcal_credentials").eq("account_id", accountId).maybeSingle();
+  const tokens = profile?.gcal_credentials as StoredTokens | null;
+  if (!tokens) return "not_connected";
+  return tokens.sync_broken ? "sync_broken" : "connected";
 }
 
 export async function pushBookingToCalendar(

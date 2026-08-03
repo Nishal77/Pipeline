@@ -15,10 +15,17 @@ export default async function SettingsPage() {
     );
   }
 
-  const [{ data: profile }, { data: phone }] = await Promise.all([
+  const [{ data: profile }, { data: phone }, { data: gcalProfile }] = await Promise.all([
     supabase.from("business_profile").select("greeting_name, service_area, price_sheet").eq("account_id", account.id).maybeSingle(),
     supabase.from("phone_numbers").select("e164, forwarding_verified_at, last_synthetic_check_at").eq("account_id", account.id).maybeSingle(),
+    supabase.from("business_profile").select("gcal_credentials").eq("account_id", account.id).maybeSingle(),
   ]);
+  // Mirrors packages/shared/src/gcal.ts's getGoogleCalendarStatus — same
+  // gcal_credentials jsonb blob, read-only here so this page doesn't need a
+  // cross-package dependency for a one-field check.
+  const gcalCreds = gcalProfile?.gcal_credentials as { sync_broken?: boolean } | null;
+  const gcalStatus: "not_connected" | "connected" | "sync_broken" = !gcalCreds ? "not_connected" : gcalCreds.sync_broken ? "sync_broken" : "connected";
+  const gcalConnectUrl = `${process.env.API_BASE_URL}/oauth/google/start?account_id=${account.id}`;
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-8">
@@ -97,6 +104,31 @@ export default async function SettingsPage() {
             <p className="text-zinc-500">No number set up yet.</p>
           )}
         </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">Google Calendar</h2>
+        {gcalStatus === "sync_broken" ? (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950">
+            <p className="font-medium text-amber-900 dark:text-amber-200">Calendar sync is broken</p>
+            <p className="mt-1 text-amber-800 dark:text-amber-300">
+              Google stopped letting us check your personal calendar for conflicts — bookings can still be made, but we
+              can&apos;t see events you&apos;ve added yourself in Google until you reconnect.
+            </p>
+            <a href={gcalConnectUrl} className="mt-3 inline-block rounded-lg bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black">
+              Reconnect Google Calendar
+            </a>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800">
+            <p className={gcalStatus === "connected" ? "text-green-600" : "text-zinc-500"}>
+              {gcalStatus === "connected" ? "✓ Connected" : "Not connected"}
+            </p>
+            <a href={gcalConnectUrl} className="mt-2 inline-block text-blue-600 underline dark:text-blue-400">
+              {gcalStatus === "connected" ? "Reconnect" : "Connect Google Calendar"}
+            </a>
+          </div>
+        )}
       </section>
 
       <section className="flex flex-col gap-3">
